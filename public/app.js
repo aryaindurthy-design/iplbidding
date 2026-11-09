@@ -1,13 +1,91 @@
 // Mobile-First IPL Auction Client & Pro AI Squad Judge
-// Permanent 24/7 Cloud Backend with Automatic Zero-Downtime Fallback
-const PERMANENT_CLOUD_BACKEND = 'https://iplbidding-backend.onrender.com';
-const CLOUDFLARE_TUNNEL_FALLBACK = 'https://roads-dirt-servers-aus.trycloudflare.com';
+// Live High-Speed Multi-Region Cloud Tunnel
+const LIVE_BACKEND_TUNNEL = 'https://sunset-graph-josh-numeric.trycloudflare.com';
 
 const urlParams = new URLSearchParams(window.location.search);
 const customBackendParam = urlParams.get('backend');
 
 const isLocalEnv = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const SOCKET_URL = customBackendParam || (isLocalEnv ? '' : PERMANENT_CLOUD_BACKEND);
+const SOCKET_URL = customBackendParam || (isLocalEnv ? '' : LIVE_BACKEND_TUNNEL);
+
+// Persistent Player Token & Session Management
+function getOrCreatePlayerToken() {
+  let tok = localStorage.getItem('ipl_player_token');
+  if (!tok) {
+    tok = 'tok_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+    localStorage.setItem('ipl_player_token', tok);
+  }
+  return tok;
+}
+const myPlayerToken = getOrCreatePlayerToken();
+
+function saveSession(roomId, teamId, managerName, isHost) {
+  if (!roomId) return;
+  localStorage.setItem('ipl_session', JSON.stringify({
+    roomId,
+    teamId,
+    managerName,
+    isHost,
+    token: myPlayerToken,
+    savedAt: Date.now()
+  }));
+}
+
+function clearSession() {
+  localStorage.removeItem('ipl_session');
+}
+
+function loadSession() {
+  try {
+    const raw = localStorage.getItem('ipl_session');
+    if (!raw) return null;
+    const sess = JSON.parse(raw);
+    if (Date.now() - (sess.savedAt || 0) > 8 * 3600 * 1000) {
+      clearSession();
+      return null;
+    }
+    return sess;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Live Notification Toast Banner
+function showNotificationToast(message, color = '#22c55e') {
+  let toast = document.getElementById('ipl-live-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'ipl-live-toast';
+    toast.style.position = 'fixed';
+    toast.style.top = '65px';
+    toast.style.left = '50%';
+    toast.style.transform = 'translateX(-50%)';
+    toast.style.zIndex = '9999';
+    toast.style.padding = '12px 22px';
+    toast.style.borderRadius = '9999px';
+    toast.style.fontWeight = '800';
+    toast.style.fontSize = '0.92rem';
+    toast.style.boxShadow = '0 10px 35px rgba(0,0,0,0.7)';
+    toast.style.transition = 'all 0.3s ease';
+    toast.style.backdropFilter = 'blur(16px)';
+    toast.style.webkitBackdropFilter = 'blur(16px)';
+    toast.style.maxWidth = '90vw';
+    toast.style.textAlign = 'center';
+    document.body.appendChild(toast);
+  }
+  toast.style.background = `${color}30`;
+  toast.style.border = `2px solid ${color}`;
+  toast.style.color = '#fff';
+  toast.innerHTML = message;
+  toast.style.display = 'block';
+  toast.style.opacity = '1';
+
+  if (window.toastTimeout) clearTimeout(window.toastTimeout);
+  window.toastTimeout = setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => { toast.style.display = 'none'; }, 300);
+  }, 4500);
+}
 
 const socket = io(SOCKET_URL, {
   transports: ['websocket', 'polling'],
@@ -18,31 +96,67 @@ const socket = io(SOCKET_URL, {
   timeout: 10000
 });
 
-// Update top navbar connection indicator with 24/7 status
+let sessionRestored = false;
+function attemptSessionRestore() {
+  if (sessionRestored) return;
+  const savedSession = loadSession();
+  if (!savedSession || !savedSession.roomId) return;
+
+  console.log('🔄 Reconnecting to saved session for room:', savedSession.roomId);
+  socket.emit('reconnectSession', {
+    roomId: savedSession.roomId,
+    playerToken: myPlayerToken
+  }, (res) => {
+    if (res && res.success) {
+      sessionRestored = true;
+      myRoomId = res.roomId;
+      myTeamId = res.teamId || savedSession.teamId;
+      myManagerName = res.managerName || savedSession.managerName || 'Manager';
+      isHost = res.isHost;
+      roomState = res.state;
+
+      saveSession(myRoomId, myTeamId, myManagerName, isHost);
+      updateNavRoomMeta();
+
+      if (roomState.status === 'LOBBY') {
+        showWaitingLobby();
+      } else if (roomState.status === 'COMPLETED') {
+        showView('analyzer');
+        renderAnalyzerView();
+      } else {
+        views.waitingLobby.style.display = 'none';
+        showView('arena');
+        renderPlayerSpotlight(roomState.currentPlayer);
+        renderArenaTeams();
+        updateBiddingPanel(roomState);
+      }
+
+      showNotificationToast(`✅ Welcome back, <strong>${myManagerName}</strong>! Restored room <strong>${myRoomId}</strong>!`, '#22c55e');
+    } else {
+      console.warn('Saved room has closed or expired:', res?.message);
+      clearSession();
+    }
+  });
+}
+
+// Update top navbar connection indicator
 socket.on('connect', () => {
-  console.log('✅ Connected to 24/7 Real-Time Cloud Auction Server! Socket ID:', socket.id);
+  console.log('✅ Connected to Real-Time Auction Server! Socket ID:', socket.id);
   const pill = document.getElementById('connection-status-pill');
   if (pill) {
-    pill.textContent = '🟢 Online 24/7';
+    pill.textContent = '🟢 Online';
     pill.style.color = '#22c55e';
-    pill.title = 'Connected to permanent 24/7 cloud server';
+    pill.title = 'Real-time WebSocket connected';
   }
+  attemptSessionRestore();
 });
 
-let failedConnectCount = 0;
 socket.on('connect_error', (err) => {
-  failedConnectCount++;
   console.warn('⚠️ Server connecting notice:', err.message);
   const pill = document.getElementById('connection-status-pill');
   if (pill) {
     pill.textContent = '🟡 Connecting...';
     pill.style.color = '#f59e0b';
-    pill.title = 'Connecting to 24/7 Cloud Server. If waking from standby, this takes ~20 seconds.';
-  }
-
-  // If primary 24/7 server is warming up and local tunnel is specified as fallback
-  if (failedConnectCount === 4 && !customBackendParam && !isLocalEnv && CLOUDFLARE_TUNNEL_FALLBACK) {
-    console.log('🔄 Checking secondary tunnel connection...');
   }
 });
 
@@ -490,14 +604,15 @@ function setupEventListeners() {
 
       if (isAvailable && !isMyTeam) {
         tile.onclick = () => {
-          socket.emit('switchTeam', { roomId: myRoomId, newTeamId: t.id }, (res) => {
+          socket.emit('switchTeam', { roomId: myRoomId, newTeamId: t.id, playerToken: myPlayerToken }, (res) => {
             if (res && res.success) {
               myTeamId = t.id;
+              saveSession(myRoomId, myTeamId, myManagerName, isHost);
               updateNavRoomMeta();
               updateLobbyMembers();
               if (switchModal) switchModal.style.display = 'none';
               if (window.audioEngine) window.audioEngine.playBidSound();
-              alert(`Switched to ${t.name}! 🏏`);
+              showNotificationToast(`Switched franchise to ${t.name}! 🏏`, t.primaryColor);
             } else {
               alert(res?.message || 'Could not switch team');
             }
@@ -561,7 +676,8 @@ function setupEventListeners() {
     socket.emit('createRoom', {
       hostName,
       selectedTeamId,
-      options: { purse, squadLimit: 11, overseasLimit: 4, timerDuration: timer, fillWithBots }
+      options: { purse, squadLimit: 11, overseasLimit: 4, timerDuration: timer, fillWithBots },
+      playerToken: myPlayerToken
     }, (res) => {
       clearTimeout(timeout);
       btn.disabled = false;
@@ -573,6 +689,7 @@ function setupEventListeners() {
         myManagerName = hostName;
         isHost = true;
         roomState = res.state;
+        saveSession(myRoomId, myTeamId, myManagerName, isHost);
         updateNavRoomMeta();
         showWaitingLobby();
       } else {
@@ -607,7 +724,8 @@ function setupEventListeners() {
     socket.emit('joinRoom', {
       roomId: roomCode,
       playerName,
-      selectedTeamId
+      selectedTeamId,
+      playerToken: myPlayerToken
     }, (res) => {
       clearTimeout(timeout);
       btn.disabled = false;
@@ -619,6 +737,7 @@ function setupEventListeners() {
         myManagerName = playerName;
         isHost = false;
         roomState = res.state;
+        saveSession(myRoomId, myTeamId, myManagerName, isHost);
         updateNavRoomMeta();
         showWaitingLobby();
       } else {
@@ -639,11 +758,24 @@ function setupEventListeners() {
 
   // Start Auction from Waiting Lobby
   document.getElementById('btn-start-auction-now').addEventListener('click', () => {
-    if (myRoomId) socket.emit('startAuction', { roomId: myRoomId });
+    if (!myRoomId) return;
+    const btn = document.getElementById('btn-start-auction-now');
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Starting Auction...';
+
+    socket.emit('startAuction', { roomId: myRoomId, playerToken: myPlayerToken }, (res) => {
+      btn.disabled = false;
+      btn.innerHTML = 'Start Live Auction Now 🔨';
+      if (res && !res.success) {
+        alert(res.message || 'Could not start auction. Make sure you are the room host.');
+      }
+    });
   });
 
   document.getElementById('btn-leave-lobby').addEventListener('click', () => {
+    clearSession();
     window.location.reload();
+  });
   });
 
   // Desktop Paddle Button
@@ -835,12 +967,14 @@ function updateLobbyMembers() {
     if (switchBtn) {
       switchBtn.onclick = (e) => {
         e.stopPropagation();
-        socket.emit('switchTeam', { roomId: myRoomId, newTeamId: t.id }, (res) => {
+        socket.emit('switchTeam', { roomId: myRoomId, newTeamId: t.id, playerToken: myPlayerToken }, (res) => {
           if (res && res.success) {
             myTeamId = t.id;
+            saveSession(myRoomId, myTeamId, myManagerName, isHost);
             updateNavRoomMeta();
             updateLobbyMembers();
             if (window.audioEngine) window.audioEngine.playBidSound();
+            showNotificationToast(`Claimed ${t.name}! 🏏`, t.primaryColor);
           } else {
             alert(res?.message || 'Could not switch team');
           }
@@ -889,8 +1023,15 @@ socket.on('auctionPaused', () => {
 });
 
 socket.on('kickedFromRoom', (data) => {
+  clearSession();
   alert(data?.reason || 'You were removed from the room by the Host.');
   window.location.reload();
+});
+
+socket.on('playerJoinedLobby', (data) => {
+  if (window.audioEngine) window.audioEngine.playBidSound();
+  showNotificationToast(`🎉 <strong>${data.playerName}</strong> joined & claimed <strong>${data.teamName}</strong>! 🏏`, data.teamColor || '#22c55e');
+  updateLobbyMembers();
 });
 
 socket.on('auctionUpdate', (state) => {

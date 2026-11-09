@@ -16,3 +16,4 @@ jobs:
           curl -s -f --max-time 15 "https://iplbidding-backend.onrender.com/api/teams" || echo "Ping sent to backend"
           curl -s -f --max-time 15 "https://iplbidding.vercel.app/api/teams" || echo "Ping sent to frontend"
           echo "Server is warm and online 24/7!"
+
