@@ -371,7 +371,7 @@ function renderTeamPickers() {
       hTile.style.boxShadow = `0 0 16px ${t.primaryColor}88`;
     }
     hTile.innerHTML = `
-      <img class="tile-logo-img" src="${t.logo}" alt="${t.shortName}">
+      <img class="tile-logo-img" src="${getProxyOrDirectImageUrl(t.logo)}" alt="${t.shortName}">
       <div class="tile-name">${t.shortName}</div>
     `;
     hTile.onclick = () => selectHostTeam(t);
@@ -387,7 +387,7 @@ function renderTeamPickers() {
       jTile.style.boxShadow = `0 0 16px ${t.primaryColor}88`;
     }
     jTile.innerHTML = `
-      <img class="tile-logo-img" src="${t.logo}" alt="${t.shortName}">
+      <img class="tile-logo-img" src="${getProxyOrDirectImageUrl(t.logo)}" alt="${t.shortName}">
       <div class="tile-name">${t.shortName}</div>
     `;
     jTile.onclick = () => selectJoinTeam(t);
@@ -469,7 +469,7 @@ function updateJoinPickerWithRoomData(teamsList) {
       jTile.style.cursor = 'not-allowed';
       jTile.style.borderColor = 'rgba(239,68,68,0.3)';
       jTile.innerHTML = `
-        <img class="tile-logo-img" src="${t.logo}" alt="${t.shortName}" style="filter: grayscale(85%);">
+        <img class="tile-logo-img" src="${getProxyOrDirectImageUrl(t.logo)}" alt="${t.shortName}" style="filter: grayscale(85%);">
         <div class="tile-name" style="color: #94a3b8;">${t.shortName}</div>
         <div style="font-size: 0.58rem; color: #ef4444; font-weight: 800; text-transform: uppercase;">TAKEN (${t.ownerName || 'Friend'})</div>
       `;
@@ -485,7 +485,7 @@ function updateJoinPickerWithRoomData(teamsList) {
         jTile.style.boxShadow = `0 0 16px ${t.primaryColor}88`;
       }
       jTile.innerHTML = `
-        <img class="tile-logo-img" src="${t.logo}" alt="${t.shortName}">
+        <img class="tile-logo-img" src="${getProxyOrDirectImageUrl(t.logo)}" alt="${t.shortName}">
         <div class="tile-name">${t.shortName}</div>
         <div style="font-size: 0.6rem; color: #22c55e; font-weight: 800; text-transform: uppercase;">AVAILABLE</div>
       `;
@@ -597,7 +597,7 @@ function setupEventListeners() {
       }
       tile.style.opacity = isAvailable ? '1.0' : '0.4';
       tile.innerHTML = `
-        <img class="tile-logo-img" src="${t.logo}" alt="${t.shortName}">
+        <img class="tile-logo-img" src="${getProxyOrDirectImageUrl(t.logo)}" alt="${t.shortName}">
         <div class="tile-name">${t.shortName}</div>
         <div style="font-size: 0.65rem; color: ${isMyTeam ? '#f59e0b' : (isAvailable ? '#22c55e' : '#ef4444')}; font-weight: 800;">
           ${isMyTeam ? 'CURRENT' : (isAvailable ? 'AVAILABLE' : 'TAKEN')}
@@ -870,7 +870,6 @@ function setupEventListeners() {
     clearSession();
     window.location.reload();
   });
-  });
 
   // Desktop Paddle Button
   document.getElementById('btn-raise-bid').addEventListener('click', handleRaiseBid);
@@ -946,7 +945,7 @@ function updateNavRoomMeta() {
   const pill = document.getElementById('nav-my-team-pill');
   if (myTeam) {
     nav.myTeamName.textContent = myTeam.shortName;
-    nav.myTeamLogo.src = myTeam.logo;
+    nav.myTeamLogo.src = getProxyOrDirectImageUrl(myTeam.logo);
     if (pill) pill.style.borderColor = myTeam.primaryColor;
   }
 
@@ -1046,7 +1045,7 @@ function updateLobbyMembers() {
 
     el.innerHTML = `
       <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
-        <img src="${t.logo}" style="width: 22px; height: 22px; object-fit: contain;">
+        <img src="${getProxyOrDirectImageUrl(t.logo)}" style="width: 22px; height: 22px; object-fit: contain;">
         <strong>${t.shortName}:</strong>
         <span style="color: ${isMyTeam ? '#f59e0b' : (t.ownerName ? '#22c55e' : '#94a3b8')}; font-weight: 700; white-space: nowrap;">
           ${isMyTeam ? 'YOU 👑' : (t.ownerName || 'Available')}
@@ -1482,7 +1481,7 @@ function renderArenaTeams() {
     el.style.borderLeft = `3px solid ${t.primaryColor}`;
     el.innerHTML = `
       <div style="display: flex; align-items: center; gap: 8px;">
-        <img class="f-logo-img" src="${t.logo}">
+        <img class="f-logo-img" src="${getProxyOrDirectImageUrl(t.logo)}">
         <div>
           <div style="font-weight: 800; font-size: 0.85rem;">${t.shortName}</div>
           <div style="font-size: 0.7rem; color: var(--text-muted);">${t.ownerName || 'AI Bot'}</div>
@@ -1523,7 +1522,7 @@ function renderFranchisesTab() {
     card.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
         <div style="display: flex; align-items: center; gap: 10px;">
-          <img src="${t.logo}" style="width: 32px; height: 32px; object-fit: contain;">
+          <img src="${getProxyOrDirectImageUrl(t.logo)}" style="width: 32px; height: 32px; object-fit: contain;">
           <div>
             <div style="font-weight: 900; font-size: 1rem; display: flex; align-items: center;">
               ${t.name} ${kickHtml}
@@ -1613,7 +1612,7 @@ function renderAnalyzerView() {
       <td><strong>#${rank + 1}</strong></td>
       <td>
         <div style="display: flex; align-items: center; gap: 8px;">
-          <img src="${t.logo}" style="width: 24px; height: 24px; object-fit: contain;">
+          <img src="${getProxyOrDirectImageUrl(t.logo)}" style="width: 24px; height: 24px; object-fit: contain;">
           <strong style="color: ${t.primaryColor}">${t.shortName}</strong>
         </div>
       </td>
@@ -1638,7 +1637,7 @@ function renderAnalyzerView() {
     btn.style.padding = '6px 12px';
     btn.style.fontSize = '0.8rem';
     btn.style.minHeight = '34px';
-    btn.innerHTML = `<img src="${t.logo}" style="width: 16px; height: 16px; object-fit: contain;"> ${t.shortName}`;
+    btn.innerHTML = `<img src="${getProxyOrDirectImageUrl(t.logo)}" style="width: 16px; height: 16px; object-fit: contain;"> ${t.shortName}`;
     btn.addEventListener('click', () => {
       activeCritiqueTeamId = t.id;
       renderDetailedCritique(t.id);
@@ -1671,7 +1670,7 @@ function renderDetailedCritique(teamId) {
   };
 
   document.getElementById('critique-team-name').textContent = team.name;
-  document.getElementById('critique-team-logo').src = team.logo;
+  document.getElementById('critique-team-logo').src = getProxyOrDirectImageUrl(team.logo);
   document.getElementById('critique-aura-points').textContent = `+${analysis.auraPoints} AURA`;
   const tierBadge = document.getElementById('critique-tier-badge');
   tierBadge.textContent = `${analysis.tier} ${analysis.tierLabel || ''}`;
