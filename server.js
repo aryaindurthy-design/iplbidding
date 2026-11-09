@@ -36,6 +36,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/ipl-auction-logo.png', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'ipl-auction-logo.png'));
 });
+app.get('/logo.png', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'logo.png'));
+});
 
 // Detect local IPv4 address
 function getLocalIp() {
