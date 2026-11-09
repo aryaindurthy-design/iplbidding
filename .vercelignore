@@ -3,5 +3,4 @@ cloudflared.exe
 node_modules
 .git
 test_*.js
-*.png
 
