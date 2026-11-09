@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="referrer" content="no-referrer">
   <title>IPL AUCTION</title>
-  <link rel="stylesheet" href="style.css?v=2.6.0">
+  <link rel="stylesheet" href="style.css?v=3.1.0">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -15,11 +15,35 @@
       document.write('<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"><\/script>');
     }
   </script>
-  <script src="audioEngine.js?v=2.6.0"></script>
+  <script src="audioEngine.js?v=3.1.0"></script>
 </head>
 <body>
   <!-- Canvas for Confetti -->
   <canvas id="confetti-canvas"></canvas>
+
+  <!-- ================= THANK YOU SCREEN (shows 2.5s before Analyzer) ================= -->
+  <div id="thankyou-screen">
+    <img src="logo.png" alt="IPL Auction" class="thankyou-logo">
+    <div class="thankyou-stars">⭐ ⭐ ⭐ ⭐ ⭐</div>
+    <div class="thankyou-title">Thank you for choosing<br>IPL Bidding Arena! ❤️</div>
+    <div class="thankyou-subtitle">Glad to have you in the game.<br>See you at the next auction! 🏏</div>
+    <div class="thankyou-heart">❤️</div>
+  </div>
+
+  <!-- ================= BID REJECTED TOAST ================= -->
+  <div id="bid-rejected-toast"></div>
+
+  <!-- ================= CUSTOM CONFIRM DIALOG ================= -->
+  <div id="ipl-confirm-overlay">
+    <div class="ipl-confirm-box glass">
+      <div class="ipl-confirm-title" id="ipl-confirm-title">Are you sure?</div>
+      <div class="ipl-confirm-msg" id="ipl-confirm-msg"></div>
+      <div class="ipl-confirm-actions">
+        <button id="ipl-confirm-cancel" class="btn btn-secondary btn-block" style="font-size:0.9rem;">Cancel</button>
+        <button id="ipl-confirm-ok" class="btn btn-primary btn-block" style="font-size:0.9rem;">Yes, Continue</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ================= GRAND STADIUM 3D DOORS OPENING OVERLAY ================= -->
   <div id="auction-doors-overlay" class="doors-overlay" style="display: none;">
@@ -50,9 +74,6 @@
 
     <!-- Active Room Pill (Hidden in Lobby) -->
     <div id="nav-room-meta" style="display: none; align-items: center; gap: 6px;">
-      <div id="btn-copy-code-pill" class="glass-pill" style="padding: 4px 8px; font-weight: 800; color: #f59e0b; font-size: 0.78rem; cursor: pointer;" title="Tap to copy room code">
-        🔑 <span id="nav-room-code">------</span>
-      </div>
       <div id="nav-my-team-pill" class="glass-pill" style="padding: 3px 6px; border-radius: 9999px; display: flex; align-items: center; justify-content: center; cursor: pointer;" title="Your Franchise (Tap in lobby to switch)">
         <img id="nav-my-team-logo" src="" style="width: 24px; height: 24px; object-fit: contain;">
       </div>
@@ -238,6 +259,13 @@
         </div>
       </div>
 
+      <!-- 👤 Manager Name Input (Change/Confirm Name before start) -->
+      <div style="background: rgba(255,255,255,0.06); padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(245,158,11,0.3); margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 0.8rem; font-weight: 800; color: #f59e0b; white-space: nowrap;">👤 Your Name:</span>
+        <input type="text" id="lobby-manager-name-input" class="text-input" placeholder="Enter your name" style="padding: 6px 10px; font-size: 0.88rem; min-height: 36px; flex: 1; font-weight: 700;">
+        <button id="btn-save-lobby-name" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.78rem; min-height: 36px; font-weight: 800; white-space: nowrap;">Save</button>
+      </div>
+
       <!-- 🌟 TOP PRIMARY 1-TAP START AUCTION BUTTON (ALWAYS VISIBLE AT TOP ON ALL MOBILES) -->
       <button id="btn-start-auction-top" class="btn btn-primary btn-block" style="font-size: 1.15rem; font-weight: 900; padding: 13px; margin-bottom: 10px; box-shadow: 0 0 25px rgba(245,158,11,0.55); text-transform: uppercase; letter-spacing: 0.5px;">
         START LIVE AUCTION NOW 🔨
@@ -286,6 +314,64 @@
 
       <button id="btn-close-switch-modal" class="btn btn-secondary btn-block" style="padding: 10px; font-size: 0.9rem;">
         Close / Keep Current Team
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: MY SQUAD (BALANCED LINEUP: BATTERS -> ALLROUNDERS -> BOWLERS) ================= -->
+  <div id="modal-my-squad" style="position: fixed; inset: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); z-index: 360; display: none; align-items: center; justify-content: center; padding: 12px; overflow-y: auto;">
+    <div class="glass" style="max-width: 500px; width: 100%; max-height: 88vh; display: flex; flex-direction: column; padding: 18px 16px; border: 2px solid rgba(245,158,11,0.5); box-shadow: 0 15px 50px rgba(0,0,0,0.9); border-radius: 20px;">
+      
+      <!-- Modal Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <img id="my-squad-modal-logo" src="" style="width: 36px; height: 36px; object-fit: contain;">
+          <div>
+            <h2 id="my-squad-modal-name" style="font-size: 1.15rem; font-weight: 900; color: #fff; margin: 0;">My Franchise</h2>
+            <div style="font-size: 0.75rem; color: #94a3b8;"><span id="my-squad-modal-manager">Manager</span> • <span id="my-squad-modal-purse" style="color: #22c55e; font-weight: 800;">₹90.0 Cr</span> left</div>
+          </div>
+        </div>
+        <button id="btn-close-my-squad" class="glass-pill icon-btn" style="min-width: 32px; min-height: 32px; font-size: 1rem; cursor: pointer; color: #fff;">✕</button>
+      </div>
+
+      <!-- Quick Summary Badges -->
+      <div style="display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap;">
+        <span class="glass-pill" id="my-squad-total-badge" style="padding: 4px 9px; font-size: 0.75rem; font-weight: 800; color: #f59e0b;">👥 0/11 Players</span>
+        <span class="glass-pill" id="my-squad-overseas-badge" style="padding: 4px 9px; font-size: 0.75rem; font-weight: 800; color: #38bdf8;">✈️ 0/4 Overseas</span>
+        <span class="glass-pill" id="my-squad-spent-badge" style="padding: 4px 9px; font-size: 0.75rem; font-weight: 800; color: #22c55e;">💰 Spent: ₹0.0 Cr</span>
+      </div>
+
+      <!-- Balanced Squad Lineup Sections (Batters 1st -> All-Rounders next -> Bowlers next) -->
+      <div style="flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 12px; padding-right: 4px;">
+        
+        <!-- 1. Batters & Wicket-Keepers -->
+        <div>
+          <div style="font-size: 0.78rem; font-weight: 900; color: #38bdf8; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 6px; display: flex; justify-content: space-between;">
+            <span>🏏 BATSMEN & WICKET-KEEPERS (<span id="my-squad-bat-count">0</span>)</span>
+          </div>
+          <div id="my-squad-batters-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
+        </div>
+
+        <!-- 2. All-Rounders -->
+        <div>
+          <div style="font-size: 0.78rem; font-weight: 900; color: #f59e0b; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 6px; display: flex; justify-content: space-between;">
+            <span>⚡ ALL-ROUNDERS (<span id="my-squad-all-count">0</span>)</span>
+          </div>
+          <div id="my-squad-allrounders-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
+        </div>
+
+        <!-- 3. Bowlers -->
+        <div>
+          <div style="font-size: 0.78rem; font-weight: 900; color: #ef4444; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 6px; display: flex; justify-content: space-between;">
+            <span>🎯 BOWLERS (<span id="my-squad-bowl-count">0</span>)</span>
+          </div>
+          <div id="my-squad-bowlers-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
+        </div>
+
+      </div>
+
+      <button id="btn-close-my-squad-bottom" class="btn btn-secondary btn-block" style="margin-top: 12px; padding: 10px; font-size: 0.9rem; font-weight: 800;">
+        Back to Auction Arena ⚡
       </button>
     </div>
   </div>
@@ -363,9 +449,12 @@
           </div>
 
           <!-- Your Purse Strip -->
-          <div style="display: flex; justify-content: space-between; font-size: 0.85rem; padding-top: 8px; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.08);">
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; padding-top: 8px; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.08);">
             <span>Purse: <strong id="my-purse-val" style="color: var(--accent-green);">₹90.00 Cr</strong></span>
-            <span>Squad: <strong id="my-squad-count">0/11</strong></span>
+            <div id="btn-open-my-squad-desk" style="cursor: pointer; padding: 3px 8px; border-radius: 6px; background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3); color: #f59e0b;" title="Tap to view your squad">
+              <span>👥 Squad: <strong id="my-squad-count" style="color:#fff;">0/11</strong></span>
+              <span style="font-size: 0.7rem; text-decoration: underline; margin-left: 4px;">View ↗️</span>
+            </div>
             <span>Overseas: <strong id="my-overseas-count">0/4 ✈️</strong></span>
           </div>
         </div>
@@ -416,9 +505,12 @@
           <span id="btn-paddle-amount-mobile">₹2.00 Cr</span>
         </button>
 
-        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-top: 6px; color: var(--text-muted);">
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; margin-top: 6px; color: var(--text-muted);">
           <span>Purse: <strong id="my-purse-val-mobile" style="color: var(--accent-green);">₹90.0 Cr</strong></span>
-          <span>Squad: <strong id="my-squad-count-mobile">0/11</strong> (✈️<span id="my-overseas-count-mobile">0/4</span>)</span>
+          <div id="btn-open-my-squad-mobile" style="cursor: pointer; padding: 2px 8px; border-radius: 6px; background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.35); color: #f59e0b; display: flex; align-items: center; gap: 4px;" title="Tap to view your balanced squad">
+            <span>👥 Squad: <strong id="my-squad-count-mobile" style="color: #fff;">0/11</strong> (✈️<span id="my-overseas-count-mobile">0/4</span>)</span>
+            <span style="font-size: 0.68rem; text-decoration: underline;">View ↗️</span>
+          </div>
         </div>
       </div>
     </div>
@@ -524,7 +616,7 @@
         <h1 style="background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
           THE PRO AI SQUAD JUDGE
         </h1>
-        <p>Tactical Playing XI, Aura Points Leaderboard, Steals vs Scams, and Brutal Pundit Roasts!</p>
+        <p>Official Tactical Ratings (Out of 100), Franchise Nicknames, Steals vs Overpays, and Balanced Playing XI Lineups.</p>
       </div>
 
       <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
@@ -556,18 +648,18 @@
         </div>
       </div>
 
-      <!-- AURA LEADERBOARD -->
+      <!-- SQUAD RATINGS LEADERBOARD -->
       <div class="glass" style="padding: 18px; margin-bottom: 20px;">
-        <h2 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 12px;">🔥 AURA LEADERBOARD</h2>
+        <h2 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 12px;">📊 OFFICIAL FRANCHISE RATINGS (OUT OF 100)</h2>
         <div style="overflow-x: auto;">
           <table class="leaderboard-table">
             <thead>
               <tr>
                 <th>#</th>
-                <th>Franchise</th>
-                <th>Bat</th>
-                <th>Bowl</th>
-                <th>Aura</th>
+                <th>Franchise (Nickname)</th>
+                <th>Rating /100</th>
+                <th>Batting</th>
+                <th>Bowling</th>
                 <th>Tier</th>
               </tr>
             </thead>
@@ -621,24 +713,10 @@
           </div>
         </div>
 
-        <!-- The 3 Commentaries -->
-        <h3 style="font-size: 1.05rem; font-weight: 800; margin-bottom: 10px;">🎙️ THE PRO AI JUDGE'S VERDICTS</h3>
-        
-        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
-          <div class="glass" style="padding: 14px; border-left: 4px solid #f59e0b;">
-            <div style="font-size: 0.85rem; font-weight: 800; color: #f59e0b; margin-bottom: 4px;">🎙️ Ravi Shastri Blast</div>
-            <p id="commentary-shastri" style="font-size: 0.85rem; font-style: italic; color: #cbd5e1; line-height: 1.4;">-</p>
-          </div>
-
-          <div class="glass" style="padding: 14px; border-left: 4px solid #38bdf8;">
-            <div style="font-size: 0.85rem; font-weight: 800; color: #38bdf8; margin-bottom: 4px;">🧐 Harsha Bhogle Tactical</div>
-            <p id="commentary-harsha" style="font-size: 0.85rem; font-style: italic; color: #cbd5e1; line-height: 1.4;">-</p>
-          </div>
-
-          <div class="glass" style="padding: 14px; border-left: 4px solid #ef4444;">
-            <div style="font-size: 0.85rem; font-weight: 800; color: #ef4444; margin-bottom: 4px;">🔥 Savage Roast & Aura Audit</div>
-            <p id="commentary-meme" style="font-size: 0.85rem; font-style: italic; color: #cbd5e1; line-height: 1.4;">-</p>
-          </div>
+        <!-- Concise AI Tactical Summary -->
+        <div class="glass" style="padding: 14px 16px; border-left: 4px solid #38bdf8; margin-bottom: 16px;">
+          <div style="font-size: 0.75rem; text-transform: uppercase; color: #38bdf8; font-weight: 800; letter-spacing: 1px; margin-bottom: 4px;">📊 SQUAD TACTICAL REPORT:</div>
+          <p id="critique-tactical-summary" style="font-size: 0.88rem; line-height: 1.5; color: #e2e8f0; font-weight: 600; margin: 0;">-</p>
         </div>
 
         <!-- Tactical Playing XI -->
@@ -648,6 +726,6 @@
     </div>
   </main>
 
-  <script src="app.js?v=2.6.0"></script>
+  <script src="app.js?v=3.1.0"></script>
 </body>
 </html>

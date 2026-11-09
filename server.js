@@ -280,6 +280,14 @@ function canTeamBid(room, teamId, bidAmount) {
   const currentPlayer = room.players[room.currentPlayerIndex];
   if (!currentPlayer) return { ok: false, reason: 'No active player' };
 
+  // CRITICAL VALIDATION: Bid must exceed current bid, and at least equal base price
+  if (room.currentBid > 0 && bidAmount <= room.currentBid) {
+    return { ok: false, reason: `Bid of ₹${bidAmount.toFixed(2)} Cr is not higher than current bid ₹${room.currentBid.toFixed(2)} Cr` };
+  }
+  if (room.currentBid === 0 && bidAmount < (currentPlayer.basePrice || 2.0)) {
+    return { ok: false, reason: `Bid cannot be lower than base price of ₹${(currentPlayer.basePrice || 2.0).toFixed(2)} Cr` };
+  }
+
   if (currentPlayer.type === 'Overseas') {
     const overseasCount = team.squad.filter(p => p.type === 'Overseas').length;
     if (overseasCount >= room.options.overseasLimit) {
@@ -773,6 +781,37 @@ io.on('connection', (socket) => {
     if (callback) callback({ success: true, newTeamId, state: publicState });
   });
 
+  // 2b-2. Update Player Name in Waiting Lobby
+  socket.on('updatePlayerName', ({ roomId, playerName, playerToken }, callback) => {
+    const upperCode = (roomId || '').trim().toUpperCase();
+    const room = rooms.get(upperCode);
+    if (!room) {
+      if (callback) callback({ success: false, message: 'Room not found' });
+      return;
+    }
+    const cleanName = (playerName || '').trim();
+    if (!cleanName) {
+      if (callback) callback({ success: false, message: 'Name cannot be empty' });
+      return;
+    }
+
+    // Check if host
+    if (room.hostSocketId === socket.id || (playerToken && room.hostToken === playerToken)) {
+      room.hostName = cleanName;
+    }
+
+    // Update their team ownerName
+    Object.values(room.teams).forEach(t => {
+      if (t.ownerSocketId === socket.id || (playerToken && t.ownerToken === playerToken)) {
+        t.ownerName = cleanName;
+      }
+    });
+
+    const publicState = getPublicRoomState(room);
+    io.to(upperCode).emit('roomUpdated', publicState);
+    if (callback) callback({ success: true, newName: cleanName, state: publicState });
+  });
+
   // 2c. Host Kick Player from Franchise
   socket.on('kickPlayer', ({ roomId, targetTeamId }, callback) => {
     const upperCode = (roomId || '').trim().toUpperCase();
@@ -849,7 +888,7 @@ io.on('connection', (socket) => {
   });
 
   // 4. Place Bid
-  socket.on('placeBid', ({ roomId, teamId, amount }) => {
+  socket.on('placeBid', ({ roomId, teamId, amount, playerToken }) => {
     const upperCode = (roomId || '').trim().toUpperCase();
     const room = rooms.get(upperCode);
     if (!room || room.status !== 'BIDDING') return;
@@ -857,9 +896,14 @@ io.on('connection', (socket) => {
     const team = room.teams[teamId];
     if (!team) return;
 
-    // Verify ownership: player can only bid for their own team
-    if (team.ownerSocketId !== socket.id) {
+    // Verify ownership: match socket.id OR persistent playerToken (resilient against network drops)
+    const isOwner = (team.ownerSocketId === socket.id) || (playerToken && team.ownerToken === playerToken);
+    if (!isOwner) {
       return socket.emit('bidRejected', { reason: 'You can only place bids for your own franchise!' });
+    }
+    // Refresh socket mapping on bid if matched via token
+    if (team.ownerSocketId !== socket.id) {
+      team.ownerSocketId = socket.id;
     }
 
     const currentPlayer = room.players[room.currentPlayerIndex];

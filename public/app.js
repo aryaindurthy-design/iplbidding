@@ -1,4 +1,4 @@
-// Mobile-First IPL Auction Client & Pro AI Squad Judge
+// Mobile-First IPL Auction Client & Pro AI Squad Judge — v3.0.0
 // 24/7 Permanent Unstoppable Cloud Backend
 const CLOUD_BACKEND_URL = 'https://iplbidding-backend.onrender.com';
 
@@ -52,30 +52,15 @@ function loadSession() {
   }
 }
 
-// Live Notification Toast Banner
-function showNotificationToast(message, color = '#22c55e') {
+// Live Notification Toast Banner (improved — no more native alert!)
+function showNotificationToast(message, color = '#22c55e', duration = 4500) {
   let toast = document.getElementById('ipl-live-toast');
   if (!toast) {
     toast = document.createElement('div');
     toast.id = 'ipl-live-toast';
-    toast.style.position = 'fixed';
-    toast.style.top = '65px';
-    toast.style.left = '50%';
-    toast.style.transform = 'translateX(-50%)';
-    toast.style.zIndex = '9999';
-    toast.style.padding = '12px 22px';
-    toast.style.borderRadius = '9999px';
-    toast.style.fontWeight = '800';
-    toast.style.fontSize = '0.92rem';
-    toast.style.boxShadow = '0 10px 35px rgba(0,0,0,0.7)';
-    toast.style.transition = 'all 0.3s ease';
-    toast.style.backdropFilter = 'blur(16px)';
-    toast.style.webkitBackdropFilter = 'blur(16px)';
-    toast.style.maxWidth = '90vw';
-    toast.style.textAlign = 'center';
     document.body.appendChild(toast);
   }
-  toast.style.background = `${color}30`;
+  toast.style.background = `${color}28`;
   toast.style.border = `2px solid ${color}`;
   toast.style.color = '#fff';
   toast.innerHTML = message;
@@ -86,7 +71,70 @@ function showNotificationToast(message, color = '#22c55e') {
   window.toastTimeout = setTimeout(() => {
     toast.style.opacity = '0';
     setTimeout(() => { toast.style.display = 'none'; }, 300);
-  }, 4500);
+  }, duration);
+}
+
+// Bid Rejected Toast (non-intrusive, appears above dock)
+function showBidRejectedToast(message) {
+  let toast = document.getElementById('bid-rejected-toast');
+  if (!toast) return;
+  toast.textContent = `❌ ${message}`;
+  toast.style.display = 'block';
+  toast.style.opacity = '1';
+  if (window.bidRejectedTimeout) clearTimeout(window.bidRejectedTimeout);
+  window.bidRejectedTimeout = setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => { toast.style.display = 'none'; }, 250);
+  }, 3000);
+}
+
+// Custom Confirm Dialog (replaces native confirm())
+function iplConfirm(title, message, onConfirm, confirmText = 'Yes, Continue', dangerBtn = false) {
+  const overlay = document.getElementById('ipl-confirm-overlay');
+  const titleEl = document.getElementById('ipl-confirm-title');
+  const msgEl = document.getElementById('ipl-confirm-msg');
+  const okBtn = document.getElementById('ipl-confirm-ok');
+  const cancelBtn = document.getElementById('ipl-confirm-cancel');
+  if (!overlay || !titleEl || !msgEl || !okBtn || !cancelBtn) {
+    // Fallback to native if DOM not ready
+    if (window.confirm(message)) onConfirm();
+    return;
+  }
+  titleEl.textContent = title;
+  msgEl.textContent = message;
+  okBtn.textContent = confirmText;
+  okBtn.className = `btn btn-block ${dangerBtn ? 'btn-danger' : 'btn-primary'}`;
+  okBtn.style.fontSize = '0.9rem';
+  overlay.classList.add('active');
+  const close = () => overlay.classList.remove('active');
+  okBtn.onclick = () => { close(); onConfirm(); };
+  cancelBtn.onclick = close;
+  overlay.onclick = (e) => { if (e.target === overlay) close(); };
+}
+
+// Unread chat badge manager
+let unreadChatCount = 0;
+function incrementUnreadBadge() {
+  const chatTab = document.querySelector('.mobile-nav-tab[data-tab="chat"]');
+  if (!chatTab) return;
+  const activeChatView = document.getElementById('view-chat');
+  if (activeChatView && activeChatView.classList.contains('active')) return; // already open
+  unreadChatCount++;
+  let badge = chatTab.querySelector('.nav-unread-badge');
+  if (!badge) {
+    badge = document.createElement('span');
+    badge.className = 'nav-unread-badge';
+    chatTab.appendChild(badge);
+  }
+  badge.textContent = unreadChatCount > 9 ? '9+' : unreadChatCount;
+}
+
+function clearUnreadBadge() {
+  unreadChatCount = 0;
+  const chatTab = document.querySelector('.mobile-nav-tab[data-tab="chat"]');
+  if (!chatTab) return;
+  const badge = chatTab.querySelector('.nav-unread-badge');
+  if (badge) badge.remove();
 }
 
 const socket = io(SOCKET_URL, {
@@ -478,7 +526,7 @@ function updateJoinPickerWithRoomData(teamsList) {
         <div style="font-size: 0.58rem; color: #ef4444; font-weight: 800; text-transform: uppercase;">TAKEN (${t.ownerName || 'Friend'})</div>
       `;
       jTile.onclick = () => {
-        alert(`❌ ${t.name} is already claimed by ${t.ownerName || 'another player'}! Please choose one of the available franchises.`);
+        showNotificationToast(`❌ ${t.name} is taken by ${t.ownerName || 'another player'}!`, '#ef4444', 3000);
       };
     } else {
       jTile.style.opacity = '1.0';
@@ -514,25 +562,29 @@ function setupEventListeners() {
       const tabName = tab.dataset.tab;
       if (tabName === 'franchises') renderFranchisesTab();
       if (tabName === 'analyzer') renderAnalyzerView();
+      if (tabName === 'chat') clearUnreadBadge();
       showView(tabName);
     });
   });
 
   // Tap to Copy Room Code Pill (copies full invite link)
-  nav.copyCodePill.addEventListener('click', () => {
-    if (!myRoomId) return;
-    const shareUrl = `${window.location.origin}/?room=${myRoomId}`;
-    navigator.clipboard.writeText(shareUrl).then(() => {
-      alert(`✅ Room Link Copied!\n\n${shareUrl}\n\nSend this to your friends on WhatsApp!`);
-    }).catch(() => {
-      alert(`Room Code: ${myRoomId}`);
+  if (nav.copyCodePill) {
+    nav.copyCodePill.addEventListener('click', () => {
+      if (!myRoomId) return;
+      const shareUrl = `${window.location.origin}/?room=${myRoomId}`;
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        showNotificationToast(`✅ Room Link Copied! Share on WhatsApp! 🚀`, '#22c55e', 3500);
+      }).catch(() => {
+        showNotificationToast(`🔑 Room Code: ${myRoomId}`, '#f59e0b', 3500);
+      });
     });
-  });
+  }
 
-  // Audio Toggle (Compact icon)
   nav.btnToggleAudio.addEventListener('click', () => {
+    window.audioEngine.init();
     const isMuted = window.audioEngine.toggleMute();
     nav.btnToggleAudio.textContent = isMuted ? '🔇' : '🔊';
+    showNotificationToast(isMuted ? '🔇 Sound OFF' : '🔊 Sound ON', isMuted ? '#ef4444' : '#22c55e', 2000);
   });
 
   // Host Pause, Skip & End Controls
@@ -547,9 +599,13 @@ function setupEventListeners() {
   });
 
   nav.btnEnd.addEventListener('click', () => {
-    if (confirm('End the auction and jump straight to the Pro AI Squad Analyzer?')) {
-      if (myRoomId) socket.emit('endAuctionNow', { roomId: myRoomId });
-    }
+    iplConfirm(
+      '🛑 End Auction Early?',
+      'End the auction now and jump to the Pro AI Squad Analyzer?',
+      () => { if (myRoomId) socket.emit('endAuctionNow', { roomId: myRoomId }); },
+      'Yes, End Auction',
+      true
+    );
   });
 
   // Leave / Exit Auction Room Handlers
@@ -638,7 +694,7 @@ function setupEventListeners() {
               if (window.audioEngine) window.audioEngine.playBidSound();
               showNotificationToast(`Switched franchise to ${t.name}! 🏏`, t.primaryColor);
             } else {
-              alert(res?.message || 'Could not switch team');
+              showNotificationToast(res?.message || 'Could not switch team', '#ef4444');
             }
           });
         };
@@ -650,11 +706,11 @@ function setupEventListeners() {
   if (teamPill && switchModal) {
     teamPill.addEventListener('click', () => {
       if (!myRoomId || !roomState) {
-        alert('You can switch your franchise anytime once inside a room!');
+        showNotificationToast('Pick or create a room first to select your franchise!', '#f59e0b');
         return;
       }
       if (roomState.status !== 'LOBBY') {
-        alert('🔒 Franchises are locked once the auction begins! Teams can only be switched in the waiting lobby before the match begins.');
+        showNotificationToast('🔒 Franchises are locked! You can only switch in the waiting lobby.', '#ef4444', 3500);
         return;
       }
       renderSwitchTeamModal();
@@ -698,7 +754,7 @@ function setupEventListeners() {
     const timeout = setTimeout(() => {
       btn.disabled = false;
       btn.innerHTML = origText;
-      alert('Connecting to the 24/7 cloud server took longer than expected. Please check your internet connection and tap again!');
+      showNotificationToast('⚠️ Server connection timed out. Please tap again.', '#f59e0b', 4000);
     }, 25000);
 
     socket.emit('createRoom', {
@@ -721,7 +777,7 @@ function setupEventListeners() {
         updateNavRoomMeta();
         showWaitingLobby();
       } else {
-        alert(res?.message || 'Error creating room. Please try again!');
+        showNotificationToast(res?.message || 'Error creating room. Please try again!', '#ef4444');
       }
     });
   });
@@ -734,7 +790,7 @@ function setupEventListeners() {
     const selectedTeamId = selectedJoinTeamId || 'CSK';
 
     if (!roomCode) {
-      alert('Please enter a 5-letter Room Code');
+      showNotificationToast('⚠️ Please enter a 5-letter Room Code', '#f59e0b', 3000);
       return;
     }
 
@@ -750,7 +806,7 @@ function setupEventListeners() {
     const timeout = setTimeout(() => {
       btn.disabled = false;
       btn.innerHTML = origText;
-      alert('Connecting to the room timed out. Please verify the room code and tap again!');
+      showNotificationToast('⚠️ Room connection timed out. Check code and tap again.', '#f59e0b', 4000);
     }, 25000);
 
     socket.emit('joinRoom', {
@@ -785,7 +841,7 @@ function setupEventListeners() {
           updateBiddingPanel(roomState);
         }
       } else {
-        alert(res?.message || 'Could not join room');
+        showNotificationToast(res?.message || 'Could not join room. Check code!', '#ef4444', 3500);
       }
     });
   });
@@ -839,7 +895,7 @@ function setupEventListeners() {
         } else {
           quickPlayBtn.disabled = false;
           quickPlayBtn.innerHTML = '🤖 Play Solo as Royal Challengers Bengaluru vs 9 AI Bots';
-          alert(res?.message || 'Could not launch solo auction. Please try again!');
+          showNotificationToast(res?.message || 'Could not launch solo auction. Please try again!', '#ef4444');
         }
       });
     });
@@ -849,9 +905,9 @@ function setupEventListeners() {
   document.getElementById('btn-copy-room-link').addEventListener('click', () => {
     const url = `${window.location.origin}/?room=${myRoomId}`;
     navigator.clipboard.writeText(url).then(() => {
-      alert(`✅ Room Link Copied!\n\n${url}\n\nSend this to your friends on WhatsApp or Instagram!`);
+      showNotificationToast('✅ Room Link Copied! Share on WhatsApp! 🚀', '#22c55e', 3500);
     }).catch(() => {
-      alert(`Room Link: ${url}`);
+      showNotificationToast(`Room Link: ${url}`, '#f59e0b', 3500);
     });
   });
 
@@ -896,7 +952,7 @@ function setupEventListeners() {
           }
         });
       } else if (res && !res.success) {
-        alert(res.message || 'Could not start auction. Make sure you are in the room.');
+        showNotificationToast(res.message || 'Could not start auction. Make sure you are in the room.', '#ef4444', 3500);
       }
     });
   }
@@ -909,26 +965,84 @@ function setupEventListeners() {
 
   document.getElementById('btn-leave-lobby').addEventListener('click', leaveAuctionRoom);
 
+  // Save Manager Name in Waiting Lobby
+  const saveLobbyNameBtn = document.getElementById('btn-save-lobby-name');
+  if (saveLobbyNameBtn) saveLobbyNameBtn.addEventListener('click', saveLobbyManagerName);
+  const lobbyNameInput = document.getElementById('lobby-manager-name-input');
+  if (lobbyNameInput) {
+    lobbyNameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        saveLobbyManagerName();
+      }
+    });
+  }
+
+  // Quick Increments Selection (+20L, +50L, +1.0Cr, +2.0Cr)
+  document.querySelectorAll('.quick-inc-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!myRoomId || !myTeamId || !roomState) return;
+      const inc = parseFloat(btn.dataset.inc);
+      currentSelectedIncrement = inc;
+      updatePaddleButtonUI();
+      // Instantly raise the bid with this increment!
+      handleRaiseBid();
+    });
+  });
+
   // Unified Paddle Buttons (Desktop & Fixed Dock)
   const deskPaddle = document.getElementById('btn-raise-bid');
   if (deskPaddle) deskPaddle.addEventListener('click', handleRaiseBid);
   const mobPaddle = document.getElementById('btn-raise-bid-mobile');
   if (mobPaddle) mobPaddle.addEventListener('click', handleRaiseBid);
 
-  // Quick Increments
-  document.querySelectorAll('.quick-inc-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (!myRoomId || !myTeamId || !roomState) return;
-      const inc = parseFloat(btn.dataset.inc);
-      const customAmount = parseFloat((roomState.currentBid + inc).toFixed(2));
-      window.audioEngine.playBidSound();
-      socket.emit('placeBid', { roomId: myRoomId, teamId: myTeamId, amount: customAmount });
+  // Open & Close My Squad Modal (Balanced Lineup: Batters -> Allrounders -> Bowlers)
+  const openSquadMob = document.getElementById('btn-open-my-squad-mobile');
+  if (openSquadMob) {
+    openSquadMob.addEventListener('click', () => {
+      renderMySquadModal();
+      const modal = document.getElementById('modal-my-squad');
+      if (modal) modal.style.display = 'flex';
     });
-  });
+  }
+  const openSquadDesk = document.getElementById('btn-open-my-squad-desk');
+  if (openSquadDesk) {
+    openSquadDesk.addEventListener('click', () => {
+      renderMySquadModal();
+      const modal = document.getElementById('modal-my-squad');
+      if (modal) modal.style.display = 'flex';
+    });
+  }
+  const closeSquadBtn = document.getElementById('btn-close-my-squad');
+  if (closeSquadBtn) {
+    closeSquadBtn.addEventListener('click', () => {
+      const modal = document.getElementById('modal-my-squad');
+      if (modal) modal.style.display = 'none';
+    });
+  }
+  const closeSquadBtm = document.getElementById('btn-close-my-squad-bottom');
+  if (closeSquadBtm) {
+    closeSquadBtm.addEventListener('click', () => {
+      const modal = document.getElementById('modal-my-squad');
+      if (modal) modal.style.display = 'none';
+    });
+  }
+  const squadModal = document.getElementById('modal-my-squad');
+  if (squadModal) {
+    squadModal.addEventListener('click', (e) => {
+      if (e.target === squadModal) squadModal.style.display = 'none';
+    });
+  }
 
   // Chat senders
   document.getElementById('btn-send-chat').addEventListener('click', () => sendChat('chat-input'));
   document.getElementById('btn-mobile-send-chat').addEventListener('click', () => sendChat('mobile-chat-input'));
+
+  // Enter key on chat inputs
+  const chatInput = document.getElementById('chat-input');
+  if (chatInput) chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendChat('chat-input'); } });
+  const mobileChatInput = document.getElementById('mobile-chat-input');
+  if (mobileChatInput) mobileChatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendChat('mobile-chat-input'); } });
 
   // Taunt pills
   document.querySelectorAll('.taunt-pill').forEach(btn => {
@@ -950,14 +1064,178 @@ function setupEventListeners() {
   }
 }
 
+// Global active bidding increment (default: +20L)
+let currentSelectedIncrement = 0.20;
+
+function calculateTargetBid(inc = currentSelectedIncrement) {
+  if (!roomState) return 2.0;
+  const currentBid = roomState.currentBid || 0;
+  const basePrice = (roomState.currentPlayer && roomState.currentPlayer.basePrice) ? roomState.currentPlayer.basePrice : 2.0;
+
+  if (currentBid === 0) {
+    return (inc === 0.20) ? basePrice : parseFloat((basePrice + inc).toFixed(2));
+  } else {
+    // ALWAYS add the selected increment to the current highest bid!
+    // Example: If at ₹8.00 Cr, +2.0Cr raises to ₹10.00 Cr!
+    return parseFloat((currentBid + inc).toFixed(2));
+  }
+}
+
+function updatePaddleButtonUI() {
+  if (!roomState) return;
+  const targetAmount = calculateTargetBid(currentSelectedIncrement);
+  const incText = currentSelectedIncrement < 1.0 ? `+${Math.round(currentSelectedIncrement * 100)}L` : `+${currentSelectedIncrement.toFixed(1)}Cr`;
+  const amountStr = `₹${targetAmount.toFixed(2)} Cr`;
+
+  // Highlight active quick increment button
+  document.querySelectorAll('.quick-inc-btn').forEach(btn => {
+    const btnInc = parseFloat(btn.dataset.inc);
+    if (Math.abs(btnInc - currentSelectedIncrement) < 0.01) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
+  const isLeading = myTeamId && roomState.leadingTeamId === myTeamId;
+
+  const mobPaddle = document.getElementById('btn-raise-bid-mobile');
+  if (mobPaddle) {
+    mobPaddle.disabled = isLeading;
+    if (isLeading) {
+      mobPaddle.innerHTML = `<span>✅ HIGHEST BIDDER (${amountStr})</span>`;
+    } else {
+      mobPaddle.innerHTML = `<span>🏏 RAISE (${incText}):</span> <span id="btn-paddle-amount-mobile">${amountStr}</span>`;
+    }
+  }
+
+  const deskPaddle = document.getElementById('btn-raise-bid');
+  if (deskPaddle) {
+    deskPaddle.disabled = isLeading;
+    if (isLeading) {
+      deskPaddle.innerHTML = `<span>✅ HIGHEST BIDDER</span>`;
+    } else {
+      deskPaddle.innerHTML = `<span>🏏 RAISE (${incText}): ${amountStr}</span>`;
+    }
+  }
+
+  const nextBidVal = document.getElementById('next-bid-val');
+  if (nextBidVal) {
+    nextBidVal.textContent = amountStr;
+  }
+}
+
 function handleRaiseBid() {
   if (!myRoomId || !myTeamId || !roomState) return;
+  if (roomState.status !== 'BIDDING') return;
+  if (roomState.leadingTeamId === myTeamId) {
+    showNotificationToast('✅ You are already the highest bidder!', '#22c55e', 2000);
+    return;
+  }
+
+  const targetAmount = calculateTargetBid(currentSelectedIncrement);
   window.audioEngine.playBidSound();
   socket.emit('placeBid', {
     roomId: myRoomId,
     teamId: myTeamId,
-    amount: roomState.nextBidAmount
+    amount: targetAmount,
+    playerToken: myPlayerToken
   });
+}
+
+function saveLobbyManagerName() {
+  const nameInput = document.getElementById('lobby-manager-name-input');
+  if (!nameInput) return;
+  const newName = nameInput.value.trim();
+  if (!newName) {
+    showNotificationToast('⚠️ Please enter a name', '#f59e0b', 2000);
+    return;
+  }
+  myManagerName = newName;
+  saveSession(myRoomId, myTeamId, myManagerName, isHost);
+  socket.emit('updatePlayerName', {
+    roomId: myRoomId,
+    playerName: newName,
+    playerToken: myPlayerToken
+  }, (res) => {
+    if (res && res.success) {
+      showNotificationToast(`👤 Manager name set to <strong>${newName}</strong>!`, '#22c55e', 2500);
+      updateLobbyMembers();
+    }
+  });
+}
+
+function renderMySquadModal() {
+  if (!roomState || !roomState.teams || !myTeamId) return;
+  const myTeam = roomState.teams[myTeamId];
+  if (!myTeam) return;
+
+  const logoEl = document.getElementById('my-squad-modal-logo');
+  if (logoEl) logoEl.src = getProxyOrDirectImageUrl(myTeam.logo);
+  const nameEl = document.getElementById('my-squad-modal-name');
+  if (nameEl) nameEl.textContent = `${myTeam.name} (${myTeam.shortName})`;
+  const managerEl = document.getElementById('my-squad-modal-manager');
+  if (managerEl) managerEl.textContent = myTeam.ownerName || myManagerName;
+  const purseEl = document.getElementById('my-squad-modal-purse');
+  if (purseEl) purseEl.textContent = `₹${myTeam.purse.toFixed(2)} Cr`;
+
+  const totalBadge = document.getElementById('my-squad-total-badge');
+  if (totalBadge) totalBadge.textContent = `👥 ${myTeam.squad.length}/11 Players`;
+  const overseasCount = myTeam.squad.filter(p => p.type === 'Overseas').length;
+  const overseasBadge = document.getElementById('my-squad-overseas-badge');
+  if (overseasBadge) overseasBadge.textContent = `✈️ ${overseasCount}/4 Overseas`;
+  const spentBadge = document.getElementById('my-squad-spent-badge');
+  if (spentBadge) spentBadge.textContent = `💰 Spent: ₹${(myTeam.totalSpent || 0).toFixed(2)} Cr`;
+
+  // Categorize squad into balanced lineup:
+  // 1. Batters & WKs (Batsman, Wicket-Keeper)
+  // 2. All-Rounders
+  // 3. Bowlers
+  const squad = myTeam.squad || [];
+  const batters = squad.filter(p => p.role === 'Batsman' || p.role === 'Wicket-Keeper');
+  const allrounders = squad.filter(p => p.role === 'All-Rounder');
+  const bowlers = squad.filter(p => p.role === 'Bowler');
+
+  const batCount = document.getElementById('my-squad-bat-count');
+  if (batCount) batCount.textContent = batters.length;
+  const allCount = document.getElementById('my-squad-all-count');
+  if (allCount) allCount.textContent = allrounders.length;
+  const bowlCount = document.getElementById('my-squad-bowl-count');
+  if (bowlCount) bowlCount.textContent = bowlers.length;
+
+  const renderList = (containerId, players, emptyMsg) => {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
+    if (players.length === 0) {
+      container.innerHTML = `<div style="font-size:0.75rem; color:#64748b; font-style:italic; padding:6px 8px;">${emptyMsg}</div>`;
+      return;
+    }
+    players.forEach((p) => {
+      const row = document.createElement('div');
+      row.className = 'squad-player-item';
+      const isOverseas = p.type === 'Overseas';
+      const price = (p.soldPrice || p.basePrice || 2).toFixed(2);
+      row.innerHTML = `
+        <div style="display:flex; align-items:center; gap:8px; overflow:hidden;">
+          <img class="squad-player-thumb" src="${getProxyOrDirectImageUrl(p.image)}" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 100 100\\' fill=\\'%2394a3b8\\'><circle cx=\\'50\\' cy=\\'35\\' r=\\'24\\'/><path d=\\'M18 90c0-18 14-32 32-32s32 14 32 32z\\'/></svg>';">
+          <div style="overflow:hidden;">
+            <div style="font-weight:800; font-size:0.85rem; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.name}</div>
+            <div style="font-size:0.7rem; color:#94a3b8;">${p.role} ${isOverseas ? '• <span style=\"color:#38bdf8;\">✈️ Overseas</span>' : '• 🇮🇳 IND'}</div>
+          </div>
+        </div>
+        <div style="text-align:right; flex-shrink:0;">
+          <div style="font-weight:900; font-size:0.85rem; color:#f59e0b;">₹${price} Cr</div>
+          <div style="font-size:0.65rem; color:#22c55e;">Rating ${p.rating || 75}</div>
+        </div>
+      `;
+      container.appendChild(row);
+    });
+  };
+
+  renderList('my-squad-batters-list', batters, 'No batsmen signed yet');
+  renderList('my-squad-allrounders-list', allrounders, 'No all-rounders signed yet');
+  renderList('my-squad-bowlers-list', bowlers, 'No bowlers signed yet');
 }
 
 function sendChat(inputId) {
@@ -976,32 +1254,38 @@ function sendChat(inputId) {
 
 // Leave or Exit Auction Room and Return to Main Lobby
 function leaveAuctionRoom() {
-  if (!confirm('Leave this auction room and return to the main lobby?')) return;
-  if (myRoomId) {
-    socket.emit('leaveRoom', { roomId: myRoomId, playerToken: myPlayerToken });
-  }
-  clearSession();
-  myRoomId = null;
-  myTeamId = null;
-  roomState = null;
-  isHost = false;
+  iplConfirm(
+    '🚪 Leave Auction Room?',
+    'Leave this room and return to the main lobby? Your session will be cleared.',
+    () => {
+      if (myRoomId) {
+        socket.emit('leaveRoom', { roomId: myRoomId, playerToken: myPlayerToken });
+      }
+      clearSession();
+      myRoomId = null;
+      myTeamId = null;
+      roomState = null;
+      isHost = false;
 
-  nav.roomMeta.style.display = 'none';
-  nav.hostControls.style.display = 'none';
-  nav.segmentedBar.style.display = 'none';
-  const exitBtn = document.getElementById('btn-nav-exit-room');
-  if (exitBtn) exitBtn.style.display = 'none';
+      nav.roomMeta.style.display = 'none';
+      nav.hostControls.style.display = 'none';
+      nav.segmentedBar.style.display = 'none';
+      const exitBtn = document.getElementById('btn-nav-exit-room');
+      if (exitBtn) exitBtn.style.display = 'none';
 
-  views.waitingLobby.style.display = 'none';
-  const soldModal = document.getElementById('sold-modal');
-  if (soldModal) soldModal.classList.remove('active');
+      views.waitingLobby.style.display = 'none';
+      const soldModal = document.getElementById('sold-modal');
+      if (soldModal) soldModal.classList.remove('active');
+      const tyScreen = document.getElementById('thankyou-screen');
+      if (tyScreen) tyScreen.classList.remove('active');
 
-  try {
-    history.pushState({}, '', window.location.pathname);
-  } catch (e) {}
-
-  showView('lobby');
-  showNotificationToast('👋 Returned to Main Lobby', '#38bdf8');
+      try { history.pushState({}, '', window.location.pathname); } catch (e) {}
+      showView('lobby');
+      showNotificationToast('👋 Returned to Main Lobby', '#38bdf8');
+    },
+    'Leave Room',
+    true
+  );
 }
 
 // 3D Stadium Doors Opening Animation
@@ -1046,7 +1330,7 @@ function playDoorsOpeningTransition(onReveal) {
 function updateNavRoomMeta() {
   nav.roomMeta.style.display = 'flex';
   nav.segmentedBar.style.display = 'flex';
-  nav.roomCode.textContent = myRoomId;
+  if (nav.roomCode) nav.roomCode.textContent = myRoomId;
 
   const myTeam = allTeams.find(t => t.id === myTeamId);
   const pill = document.getElementById('nav-my-team-pill');
@@ -1085,6 +1369,11 @@ function showWaitingLobby() {
   if (waBtn) {
     const waText = encodeURIComponent(`🏏 Join my Private IPL Mega Auction room!\nCode: ${myRoomId}\n👉 ${shareUrl}`);
     waBtn.href = `https://api.whatsapp.com/send?text=${waText}`;
+  }
+
+  const nameInput = document.getElementById('lobby-manager-name-input');
+  if (nameInput) {
+    nameInput.value = myManagerName || 'Manager';
   }
 
   const topStartBtn = document.getElementById('btn-start-auction-top');
@@ -1185,7 +1474,7 @@ function updateLobbyMembers() {
             if (window.audioEngine) window.audioEngine.playBidSound();
             showNotificationToast(`Claimed ${t.name}! 🏏`, t.primaryColor);
           } else {
-            alert(res?.message || 'Could not switch team');
+            showNotificationToast(res?.message || 'Could not switch team', '#ef4444');
           }
         });
       };
@@ -1195,13 +1484,19 @@ function updateLobbyMembers() {
     if (kickBtn) {
       kickBtn.onclick = (e) => {
         e.stopPropagation();
-        if (confirm(`Kick ${t.ownerName || 'this player'} (${t.shortName}) out of the room?`)) {
-          socket.emit('kickPlayer', { roomId: myRoomId, targetTeamId: t.id }, (res) => {
-            if (res && !res.success) {
-              alert(res.message || 'Could not kick player');
-            }
-          });
-        }
+        iplConfirm(
+          '❌ Kick Player?',
+          `Remove ${t.ownerName || 'this player'} (${t.shortName}) from the room?`,
+          () => {
+            socket.emit('kickPlayer', { roomId: myRoomId, targetTeamId: t.id }, (res) => {
+              if (res && !res.success) {
+                showNotificationToast(res.message || 'Could not kick player', '#ef4444');
+              }
+            });
+          },
+          'Kick Player',
+          true
+        );
       };
     }
 
@@ -1234,8 +1529,8 @@ socket.on('auctionPaused', () => {
 
 socket.on('kickedFromRoom', (data) => {
   clearSession();
-  alert(data?.reason || 'You were removed from the room by the Host.');
-  window.location.reload();
+  showNotificationToast(data?.reason || 'You were removed from the room by the Host.', '#ef4444', 5000);
+  setTimeout(() => window.location.reload(), 2000);
 });
 
 socket.on('playerJoinedLobby', (data) => {
@@ -1512,17 +1807,43 @@ socket.on('auctionCompleted', (data) => {
   roomState.teams = data.teams;
   roomState.teamAnalyses = data.teamAnalyses;
   roomState.tournamentResult = data.tournamentResult;
+  roomState.status = 'COMPLETED';
 
-  showView('analyzer');
-  renderAnalyzerView();
+  // Show thank-you screen for 2.5s before showing analyzer
+  const tyScreen = document.getElementById('thankyou-screen');
+  if (tyScreen) {
+    tyScreen.classList.add('active');
+    if (window.audioEngine) window.audioEngine.playGavel();
+    triggerConfetti();
+    setTimeout(() => {
+      tyScreen.classList.remove('active');
+      showView('analyzer');
+      renderAnalyzerView();
+    }, 2800);
+  } else {
+    showView('analyzer');
+    renderAnalyzerView();
+  }
 });
 
 socket.on('newChat', (chat) => {
+  // Show unread badge if chat tab not active
+  incrementUnreadBadge();
+
+  const msgTime = chat.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const teamInfo = chat.teamId ? allTeams.find(t => t.id === chat.teamId) : null;
+  const teamColor = teamInfo ? teamInfo.primaryColor : '#94a3b8';
+  const teamLogoHtml = teamInfo ? `<img src="${getProxyOrDirectImageUrl(teamInfo.logo)}" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:3px;">` : '';
+
   // Desktop chat
   const deskBox = document.getElementById('chat-messages-box');
   if (deskBox) {
     const el = document.createElement('div');
-    el.innerHTML = `<strong>${chat.senderName}:</strong> ${chat.message}`;
+    el.style.padding = '4px 6px';
+    el.style.borderRadius = '7px';
+    el.style.background = 'rgba(255,255,255,0.05)';
+    el.style.marginBottom = '4px';
+    el.innerHTML = `<span style="font-weight:800;color:${teamColor};">${teamLogoHtml}${chat.senderName}:</span> <span style="color:#e2e8f0;">${chat.message}</span> <span style="font-size:0.65rem;color:#475569;float:right;">${msgTime}</span>`;
     deskBox.appendChild(el);
     deskBox.scrollTop = deskBox.scrollHeight;
   }
@@ -1531,23 +1852,30 @@ socket.on('newChat', (chat) => {
   const mobBox = document.getElementById('mobile-chat-messages');
   if (mobBox) {
     const el = document.createElement('div');
-    el.style.padding = '6px 10px';
-    el.style.borderRadius = '8px';
-    el.style.background = 'rgba(255,255,255,0.06)';
-    el.innerHTML = `<strong style="color: #f59e0b;">${chat.senderName}:</strong> ${chat.message}`;
+    el.style.padding = '7px 10px';
+    el.style.borderRadius = '10px';
+    el.style.background = 'rgba(255,255,255,0.05)';
+    el.style.marginBottom = '5px';
+    el.innerHTML = `<div style="font-size:0.75rem;color:${teamColor};font-weight:800;margin-bottom:2px;">${teamLogoHtml}${chat.senderName} <span style="color:#475569;font-weight:400;">${msgTime}</span></div><div style="color:#e2e8f0;font-size:0.88rem;">${chat.message}</div>`;
     mobBox.appendChild(el);
     mobBox.scrollTop = mobBox.scrollHeight;
   }
 });
 
 socket.on('bidRejected', (data) => {
-  alert(`Bid Notice: ${data.reason}`);
+  showBidRejectedToast(data.reason || 'Bid not allowed right now');
 });
 
 // --- UI HELPERS ---
 
 function renderPlayerSpotlight(player) {
   if (!player) return;
+
+  // Stop any lingering audio from previous player immediately
+  if (window.audioEngine) {
+    window.audioEngine.stopCurrentAudio();
+  }
+
   document.getElementById('player-name').textContent = player.name;
   document.getElementById('player-set-tag').textContent = player.set || 'Marquee Set 1';
   document.getElementById('player-role-badge').textContent = player.role || 'Player';
@@ -1586,16 +1914,10 @@ function renderPlayerSpotlight(player) {
 
 function updateBiddingPanel(state) {
   const currentBidStr = state.currentBid > 0 ? `₹${state.currentBid.toFixed(2)} Cr` : '₹0.00 Cr';
-  const nextBidStr = `₹${state.nextBidAmount.toFixed(2)} Cr`;
-
   document.getElementById('current-bid-val').textContent = currentBidStr;
-  document.getElementById('next-bid-val').textContent = nextBidStr;
 
-  // Paddle Amounts
-  const deskPaddleAmount = document.getElementById('btn-paddle-amount');
-  if (deskPaddleAmount) deskPaddleAmount.textContent = nextBidStr;
-  const mobPaddleAmount = document.getElementById('btn-paddle-amount-mobile');
-  if (mobPaddleAmount) mobPaddleAmount.textContent = nextBidStr;
+  // Dynamically update paddle with the selected increment (e.g. +20L, +50L, +1.0Cr, +2.0Cr)
+  updatePaddleButtonUI();
 
   // Leading Bidder Badge with Official Logo
   const leadingName = document.getElementById('leading-team-name');
@@ -1631,12 +1953,10 @@ function updateBiddingPanel(state) {
     const deskPaddle = document.getElementById('btn-raise-bid');
     const mobPaddle = document.getElementById('btn-raise-bid-mobile');
 
-    [deskPaddle, mobPaddle].forEach(p => {
-      if (p) {
-        p.disabled = isLeading;
-        p.querySelector('span:first-child').textContent = isLeading ? '✅ YOU ARE HIGHEST' : '🏏 RAISE:';
-      }
-    });
+    const squadModal = document.getElementById('modal-my-squad');
+    if (squadModal && squadModal.style.display === 'flex') {
+      renderMySquadModal();
+    }
   }
 }
 
@@ -1713,11 +2033,17 @@ function renderFranchisesTab() {
     if (kickBtn) {
       kickBtn.onclick = (e) => {
         e.stopPropagation();
-        if (confirm(`Kick ${t.ownerName || 'this player'} (${t.shortName}) out of the room?`)) {
-          socket.emit('kickPlayer', { roomId: myRoomId, targetTeamId: t.id }, (res) => {
-            if (res && !res.success) alert(res.message || 'Could not kick player');
-          });
-        }
+        iplConfirm(
+          '❌ Kick Player?',
+          `Remove ${t.ownerName || 'this player'} (${t.shortName}) from the room?`,
+          () => {
+            socket.emit('kickPlayer', { roomId: myRoomId, targetTeamId: t.id }, (res) => {
+              if (res && !res.success) showNotificationToast(res.message || 'Could not kick player', '#ef4444');
+            });
+          },
+          'Kick Player',
+          true
+        );
       };
     }
 
@@ -1741,10 +2067,13 @@ function renderAnalyzerView() {
       bowlingScore: 80,
       balanceScore: 80
     };
-    return { ...t, analysis: a };
+    // Calculate authentic 0-100 squad rating
+    const overallScore = Math.min(99, Math.max(50, Math.round(a.battingScore * 0.40 + a.bowlingScore * 0.40 + a.balanceScore * 0.20)));
+    return { ...t, analysis: { ...a, overallScore } };
   });
 
-  teamList.sort((a,b) => b.analysis.auraPoints - a.analysis.auraPoints);
+  // Sort by overall score out of 100
+  teamList.sort((a,b) => b.analysis.overallScore - a.analysis.overallScore);
 
   // 1ST PLACE WINNER CARD POPULATION
   const winner = teamList[0];
@@ -1755,10 +2084,10 @@ function renderAnalyzerView() {
     if (logoEl) logoEl.src = getProxyOrDirectImageUrl(winner.logo);
 
     const nameEl = document.getElementById('champ-winner-name');
-    if (nameEl) nameEl.textContent = `${winner.name} 👑 (${winner.ownerName || 'Manager'})`;
+    if (nameEl) nameEl.textContent = `${winner.name} (${winner.shortName}) 👑 [${winner.ownerName || 'Manager'}]`;
 
     const scorePill = document.getElementById('champ-score-pill');
-    if (scorePill) scorePill.textContent = `🏆 #1 AURA: +${winner.analysis.auraPoints} PTS`;
+    if (scorePill) scorePill.textContent = `🏆 SCORE: ${winner.analysis.overallScore}/100 (${winner.analysis.tier} TIER)`;
 
     const spentPill = document.getElementById('champ-spent-pill');
     if (spentPill) spentPill.textContent = `💰 SPENT: ₹${(winner.totalSpent || 0).toFixed(1)} Cr`;
@@ -1769,8 +2098,8 @@ function renderAnalyzerView() {
     const reasonEl = document.getElementById('champ-winner-reason');
     if (reasonEl) {
       const topStars = winner.squad.slice(0, 3).map(p => p.name).join(', ');
-      const starsFragment = topStars ? ` anchored by key match-winners ${topStars}` : '';
-      reasonEl.textContent = `${winner.name} finished at #1 with an exceptional tactical build${starsFragment}! They assembled an elite batting lineup (Rating: ${winner.analysis.battingScore}/100) alongside a high-caliber bowling unit (Rating: ${winner.analysis.bowlingScore}/100) and outstanding overall synergy (Rating: ${winner.analysis.balanceScore}/100) while maximizing their ₹90 Cr purse.`;
+      const starsFragment = topStars ? ` anchored by match-winners ${topStars}` : '';
+      reasonEl.textContent = `${winner.name} finished #1 with a tactical squad rating of ${winner.analysis.overallScore}/100${starsFragment}! They fielded an elite batting lineup (${winner.analysis.battingScore}/100) alongside a high-impact bowling attack (${winner.analysis.bowlingScore}/100) and full squad depth within the ₹90 Cr budget.`;
     }
 
     if (!activeCritiqueTeamId) activeCritiqueTeamId = winner.id;
@@ -1784,12 +2113,15 @@ function renderAnalyzerView() {
       <td>
         <div style="display: flex; align-items: center; gap: 8px;">
           <img src="${getProxyOrDirectImageUrl(t.logo)}" style="width: 24px; height: 24px; object-fit: contain;">
-          <strong style="color: ${t.primaryColor}">${t.shortName}</strong>
+          <div>
+            <strong style="color: ${t.primaryColor}">${t.shortName}</strong>
+            <div style="font-size:0.7rem; color:#94a3b8;">${t.name}</div>
+          </div>
         </div>
       </td>
-      <td style="color: #38bdf8;">${t.analysis.battingScore}</td>
-      <td style="color: #ef4444;">${t.analysis.bowlingScore}</td>
-      <td style="font-weight: 900; color: #f59e0b;">+${t.analysis.auraPoints}</td>
+      <td><strong style="color: #22c55e; font-size: 1.05rem;">${t.analysis.overallScore}/100</strong></td>
+      <td style="color: #38bdf8; font-weight: 700;">${t.analysis.battingScore}</td>
+      <td style="color: #ef4444; font-weight: 700;">${t.analysis.bowlingScore}</td>
       <td><span class="tier-badge" style="background: ${t.analysis.tierColor || '#f59e0b'}; color: #000;">${t.analysis.tier}</span></td>
     `;
     tr.addEventListener('click', () => {
@@ -1825,26 +2157,22 @@ function renderDetailedCritique(teamId) {
   const team = roomState.teams[teamId];
   if (!team) return;
 
-  const analysis = (roomState.teamAnalyses && roomState.teamAnalyses[teamId]) || {
+  const rawAnalysis = (roomState.teamAnalyses && roomState.teamAnalyses[teamId]) || {
     auraPoints: 8850,
     tier: 'SSS',
-    tierLabel: 'GOD TIER DYNASTY 👑',
+    tierLabel: 'ELITE CONTENDER',
     battingScore: 92,
     bowlingScore: 88,
-    balanceScore: 94,
-    playingXI: team.squad.map((p, idx) => ({ ...p, slot: idx+1, roleTag: p.role })),
-    commentary: {
-      shastri: "“LIKE A TRACER BULLET! A formidable, high-octane unit with championship pedigree!”",
-      harsha: "“A fascinating blend of flair and tactical discipline. Balanced to perfection.”",
-      memeRoast: "🗿 GIGACHAD SQUAD: Bro cooked the entire room, drafted certified killers, and earned maximum Aura!"
-    }
+    balanceScore: 94
   };
+  const overallRating = Math.min(99, Math.max(50, Math.round(rawAnalysis.battingScore * 0.40 + rawAnalysis.bowlingScore * 0.40 + rawAnalysis.balanceScore * 0.20)));
+  const analysis = { ...rawAnalysis, overallRating };
 
-  document.getElementById('critique-team-name').textContent = team.name;
+  document.getElementById('critique-team-name').textContent = `${team.name} (${team.shortName})`;
   document.getElementById('critique-team-logo').src = getProxyOrDirectImageUrl(team.logo);
-  document.getElementById('critique-aura-points').textContent = `+${analysis.auraPoints} AURA`;
+  document.getElementById('critique-aura-points').textContent = `Rating: ${overallRating}/100`;
   const tierBadge = document.getElementById('critique-tier-badge');
-  tierBadge.textContent = `${analysis.tier} ${analysis.tierLabel || ''}`;
+  tierBadge.textContent = `${analysis.tier} TIER`;
   tierBadge.style.background = analysis.tierColor || '#f59e0b';
 
   document.getElementById('critique-bat-score').textContent = analysis.battingScore;
@@ -1854,40 +2182,46 @@ function renderDetailedCritique(teamId) {
   // Steal vs Overpay
   const stealEl = document.getElementById('critique-steal-text');
   if (analysis.bestSteal) {
-    stealEl.innerHTML = `<strong>${analysis.bestSteal.player.name}</strong> at <strong>₹${analysis.bestSteal.price} Cr</strong> (Rating: ${analysis.bestSteal.rating}/100)!`;
+    stealEl.innerHTML = `<strong>${analysis.bestSteal.player.name}</strong> at <strong>₹${analysis.bestSteal.price} Cr</strong> (Rating: ${analysis.bestSteal.rating}/100)`;
   } else {
     stealEl.textContent = 'Clean, disciplined purchases across the board.';
   }
 
   const overpayEl = document.getElementById('critique-overpay-text');
   if (analysis.worstOverpay && analysis.worstOverpay.price > 12) {
-    overpayEl.innerHTML = `<strong>${analysis.worstOverpay.player.name}</strong> inflated to <strong>₹${analysis.worstOverpay.price} Cr</strong> in a bidding war!`;
+    overpayEl.innerHTML = `<strong>${analysis.worstOverpay.player.name}</strong> at <strong>₹${analysis.worstOverpay.price} Cr</strong>`;
   } else {
-    overpayEl.textContent = 'Zero catastrophic overpays! Masterful budget control.';
+    overpayEl.textContent = 'Zero overpays. Budget controlled masterfully.';
   }
 
-  document.getElementById('commentary-shastri').textContent = analysis.commentary.shastri;
-  document.getElementById('commentary-harsha').textContent = analysis.commentary.harsha;
-  document.getElementById('commentary-meme').textContent = analysis.commentary.memeRoast;
+  // Crisp, clean AI Tactical Report (No commentator roleplay)
+  const summaryEl = document.getElementById('critique-tactical-summary');
+  if (summaryEl) {
+    const stars = team.squad.slice(0, 3).map(p => p.name).join(', ');
+    const starsPart = stars ? `Anchored by ${stars}, ` : '';
+    summaryEl.textContent = `${starsPart}${team.name} achieved an overall tactical rating of ${overallRating}/100. Their batting depth scored ${analysis.battingScore}/100 and bowling unit scored ${analysis.bowlingScore}/100 with ${analysis.balanceScore}/100 squad synergy across all 11 slots.`;
+  }
 
-  // Tactical Lineup 1 to 11
+  // Categorized Tactical Squad Lineup: Batters -> Allrounders -> Bowlers
   const xiGrid = document.getElementById('critique-xi-grid');
   xiGrid.innerHTML = '';
-  const xiList = analysis.playingXI || team.squad;
+  const squad = team.squad || [];
 
-  xiList.forEach(p => {
+  squad.forEach((p, idx) => {
     const card = document.createElement('div');
     card.className = 'glass';
     card.style.padding = '8px 12px';
     card.style.display = 'flex';
     card.style.alignItems = 'center';
     card.style.gap = '10px';
+    const isOverseas = p.type === 'Overseas';
+    const price = (p.soldPrice || p.basePrice || 2).toFixed(2);
     card.innerHTML = `
-      <div style="font-weight: 900; color: #f59e0b; width: 20px;">#${p.slot || ''}</div>
-      <img src="${getProxyOrDirectImageUrl(p.image) || ''}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #1e293b;" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\' fill=\'%2394a3b8\'><circle cx=\'50\' cy=\'35\' r=\'24\'/><path d=\'M18 90c0-18 14-32 32-32s32 14 32 32z\'/></svg>';">
-      <div style="flex: 1;">
-        <div style="font-weight: 800; font-size: 0.9rem;">${p.name} ${p.isCaptain ? '👑(C)' : ''}</div>
-        <div style="font-size: 0.75rem; color: var(--text-muted);">${p.roleTag || p.role} • ${p.type === 'Overseas' ? '✈️' : '🇮🇳'}</div>
+      <div style="font-weight: 900; color: #f59e0b; width: 22px;">#${idx + 1}</div>
+      <img src="${getProxyOrDirectImageUrl(p.image) || ''}" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover; background: #1e293b;" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 100 100\\' fill=\\'%2394a3b8\\'><circle cx=\\'50\\' cy=\\'35\\' r=\\'24\\'/><path d=\\'M18 90c0-18 14-32 32-32s32 14 32 32z\\'/></svg>';">
+      <div style="flex: 1; overflow: hidden;">
+        <div style="font-weight: 800; font-size: 0.88rem; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.name}</div>
+        <div style="font-size: 0.72rem; color: var(--text-muted);">${p.role} • ${isOverseas ? '✈️ Overseas' : 'IND 🇮🇳'} • <span style="color:#f59e0b;font-weight:800;">₹${price}Cr</span></div>
       </div>
     `;
     xiGrid.appendChild(card);
@@ -1905,32 +2239,30 @@ function renderTournamentResults(result) {
 function copySquadAuraCard() {
   if (!roomState || !roomState.teams) return;
   const team = roomState.teams[activeCritiqueTeamId];
+  if (!team) return;
   const a = (roomState.teamAnalyses && roomState.teamAnalyses[activeCritiqueTeamId]) || {};
+  const overallRating = Math.min(99, Math.max(50, Math.round((a.battingScore||80) * 0.40 + (a.bowlingScore||80) * 0.40 + (a.balanceScore||80) * 0.20)));
 
   const report = `
 🏏 IPL MEGA AUCTION SQUAD REPORT 🏏
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Team: ${team.name}
-Manager: ${team.ownerName || 'Mastermind'}
-Total Spent: ₹${(team.totalSpent || 0).toFixed(2)} Cr
-Aura Score: +${a.auraPoints || 7500} Aura Points
-Tier: ${a.tier || 'S'} Grade (${a.tierLabel || 'Contender'})
+Team: ${team.name} (${team.shortName})
+Manager: ${team.ownerName || 'Manager'}
+Total Spent: ₹${(team.totalSpent || 0).toFixed(2)} Cr (Purse Left: ₹${(team.purse || 0).toFixed(2)} Cr)
+Official AI Rating: ${overallRating}/100 (${a.tier || 'S'} Tier)
 
-📊 STATS RADAR:
-• Batting: ${a.battingScore || 80}/100
-• Bowling: ${a.bowlingScore || 80}/100
-• Balance: ${a.balanceScore || 85}/100
+📊 TACTICAL RATINGS:
+• Batting Depth: ${a.battingScore || 80}/100
+• Bowling Attack: ${a.bowlingScore || 80}/100
+• Squad Synergy: ${a.balanceScore || 85}/100
 
-🎙️ PRO AI JUDGE VERDICT:
-${a.commentary ? a.commentary.memeRoast : ''}
-
-PLAYING XI:
-${(a.playingXI || team.squad).map((p, i) => `${i+1}. ${p.name} (${p.roleTag || p.role})`).join('\n')}
+🏏 SQUAD (${(team.squad || []).length}/11 PLAYERS):
+${(team.squad || []).map((p, i) => `${i+1}. ${p.name} (${p.role} - ₹${(p.soldPrice || p.basePrice || 2).toFixed(1)}Cr)`).join('\n')}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   `.trim();
 
   navigator.clipboard.writeText(report).then(() => {
-    alert('📋 Squad Aura Card copied! Paste it in your WhatsApp/Discord group to flex!');
+    showNotificationToast('📋 Squad Card copied! Paste on WhatsApp to flex! 🔥', '#22c55e', 3500);
   });
 }
 

@@ -756,7 +756,7 @@ class AudioEngine {
     return this.catalog[chosenKey];
   }
 
-  // PLAY TEAM ANTHEM AT EXACT PEAK DROP POINT (7.6s with smooth fade)
+  // PLAY TEAM ANTHEM AT EXACT PEAK DROP POINT (5.8s total duration with smooth 3-second fadeout)
   playTeamAnthem(teamId) {
     if (this.muted) return null;
     this.init();
@@ -776,11 +776,14 @@ class AudioEngine {
     }
 
     audio.play().then(() => {
+      // Play full energy for 2.8s, then smoothly fade out over the last 3 seconds!
       this.fadeTimer = setTimeout(() => {
         let vol = 1.0;
+        const fadeSteps = 30; // 30 steps * 100ms = 3.0 seconds fadeout!
+        const stepVol = 1.0 / fadeSteps;
         this.fadeInterval = setInterval(() => {
-          vol -= 0.15;
-          if (vol <= 0.05) {
+          vol -= stepVol;
+          if (vol <= 0.04) {
             clearInterval(this.fadeInterval);
             this.fadeInterval = null;
             this.stopCurrentAudio();
@@ -788,7 +791,7 @@ class AudioEngine {
             this.currentAudioEl.volume = Math.max(0, vol);
           }
         }, 100);
-      }, 7600);
+      }, 2800);
     }).catch(err => {
       console.warn('Audio playback notice:', err);
     });
