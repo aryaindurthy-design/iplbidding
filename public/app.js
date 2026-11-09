@@ -749,12 +749,78 @@ function setupEventListeners() {
         roomState = res.state;
         saveSession(myRoomId, myTeamId, myManagerName, isHost);
         updateNavRoomMeta();
-        showWaitingLobby();
+
+        if (roomState.status === 'LOBBY') {
+          showWaitingLobby();
+        } else if (roomState.status === 'COMPLETED') {
+          showView('analyzer');
+          renderAnalyzerView();
+        } else {
+          views.waitingLobby.style.display = 'none';
+          showView('arena');
+          renderPlayerSpotlight(roomState.currentPlayer);
+          renderArenaTeams();
+          updateBiddingPanel(roomState);
+        }
       } else {
         alert(res?.message || 'Could not join room');
       }
     });
   });
+
+  // Quick Solo Play vs AI Bots
+  const quickPlayBtn = document.getElementById('btn-quick-play');
+  if (quickPlayBtn) {
+    quickPlayBtn.addEventListener('click', () => {
+      window.audioEngine.init();
+      quickPlayBtn.disabled = true;
+      quickPlayBtn.innerHTML = '⏳ Launching Solo Auction...';
+
+      if (!socket.connected) {
+        showNotificationToast('⚡ Connecting to 24/7 Cloud Auction Server...', '#f59e0b');
+      }
+
+      const hostName = document.getElementById('host-name-input').value.trim() || 'Boss Manager';
+      const selectedTeamId = selectedHostTeamId || 'RCB';
+      const purse = parseFloat(document.getElementById('setting-purse').value) || 90;
+      const timer = parseInt(document.getElementById('setting-timer').value) || 12;
+
+      socket.emit('createRoom', {
+        hostName,
+        selectedTeamId,
+        options: { purse, squadLimit: 11, overseasLimit: 4, timerDuration: timer, fillWithBots: true },
+        playerToken: myPlayerToken
+      }, (res) => {
+        if (res && res.success) {
+          myRoomId = res.roomId;
+          myTeamId = selectedTeamId;
+          myManagerName = hostName;
+          isHost = true;
+          roomState = res.state;
+          saveSession(myRoomId, myTeamId, myManagerName, isHost);
+
+          socket.emit('startAuction', { roomId: myRoomId, playerToken: myPlayerToken }, (startRes) => {
+            quickPlayBtn.disabled = false;
+            quickPlayBtn.innerHTML = '🤖 Play Solo as Royal Challengers Bengaluru vs 9 AI Bots';
+            if (startRes && startRes.state) roomState = startRes.state;
+            views.waitingLobby.style.display = 'none';
+            showView('arena');
+            updateNavRoomMeta();
+            if (roomState && roomState.currentPlayer) {
+              renderPlayerSpotlight(roomState.currentPlayer);
+              renderArenaTeams();
+              updateBiddingPanel(roomState);
+            }
+            if (window.audioEngine) window.audioEngine.playGavel();
+          });
+        } else {
+          quickPlayBtn.disabled = false;
+          quickPlayBtn.innerHTML = '🤖 Play Solo as Royal Challengers Bengaluru vs 9 AI Bots';
+          alert(res?.message || 'Could not launch solo auction. Please try again!');
+        }
+      });
+    });
+  }
 
   // Copy Link Button in Waiting Lobby
   document.getElementById('btn-copy-room-link').addEventListener('click', () => {
@@ -783,7 +849,18 @@ function setupEventListeners() {
       clearTimeout(startTimeout);
       btn.disabled = false;
       btn.innerHTML = 'Start Live Auction Now 🔨';
-      if (res && !res.success) {
+      if (res && res.success) {
+        if (res.state) roomState = res.state;
+        views.waitingLobby.style.display = 'none';
+        showView('arena');
+        updateNavRoomMeta();
+        if (roomState && roomState.currentPlayer) {
+          renderPlayerSpotlight(roomState.currentPlayer);
+          renderArenaTeams();
+          updateBiddingPanel(roomState);
+        }
+        if (window.audioEngine) window.audioEngine.playGavel();
+      } else if (res && !res.success) {
         alert(res.message || 'Could not start auction. Make sure you are the room host.');
       }
     });

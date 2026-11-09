@@ -746,7 +746,8 @@ io.on('connection', (socket) => {
 
   // 3. Start Auction (Reliable Host Validation with Reconnect Recovery)
   socket.on('startAuction', ({ roomId, playerToken }, callback) => {
-    const room = rooms.get(roomId);
+    const upperCode = (roomId || '').trim().toUpperCase();
+    const room = rooms.get(upperCode);
     if (!room) {
       if (callback) callback({ success: false, message: 'Room not found' });
       return;
@@ -759,17 +760,21 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Re-bind host socket id in case of reconnect
+    // Re-bind host socket id in case of reconnect and ensure socket is in the room channel
     room.hostSocketId = socket.id;
+    socket.join(upperCode);
 
-    console.log(`[Auction Started] Room: ${roomId} by Host: ${room.hostName}`);
+    console.log(`[Auction Started] Room: ${upperCode} by Host: ${room.hostName}`);
     startAuctionClock(room);
-    if (callback) callback({ success: true });
+    const publicState = getPublicRoomState(room);
+    if (callback) callback({ success: true, state: publicState });
+    io.to(upperCode).emit('auctionUpdate', publicState);
   });
 
   // 4. Place Bid
   socket.on('placeBid', ({ roomId, teamId, amount }) => {
-    const room = rooms.get(roomId);
+    const upperCode = (roomId || '').trim().toUpperCase();
+    const room = rooms.get(upperCode);
     if (!room || room.status !== 'BIDDING') return;
 
     const team = room.teams[teamId];
@@ -795,32 +800,36 @@ io.on('connection', (socket) => {
 
   // 5. Host Controls: Skip, Pause, Resume, End
   socket.on('skipPlayer', ({ roomId }) => {
-    const room = rooms.get(roomId);
+    const upperCode = (roomId || '').trim().toUpperCase();
+    const room = rooms.get(upperCode);
     if (!room || room.hostSocketId !== socket.id) return;
     resolveCurrentAuction(room);
   });
 
   socket.on('togglePause', ({ roomId }) => {
-    const room = rooms.get(roomId);
+    const upperCode = (roomId || '').trim().toUpperCase();
+    const room = rooms.get(upperCode);
     if (!room || room.hostSocketId !== socket.id) return;
     if (room.status === 'BIDDING') {
       stopAuctionClock(room);
       room.status = 'PAUSED';
-      io.to(roomId).emit('auctionPaused');
+      io.to(upperCode).emit('auctionPaused');
     } else if (room.status === 'PAUSED') {
       startAuctionClock(room);
     }
   });
 
   socket.on('endAuctionNow', ({ roomId }) => {
-    const room = rooms.get(roomId);
+    const upperCode = (roomId || '').trim().toUpperCase();
+    const room = rooms.get(upperCode);
     if (!room || room.hostSocketId !== socket.id) return;
     completeAuction(room);
   });
 
   // 6. Live Chat & Taunts
   socket.on('sendChat', ({ roomId, message, teamId, senderName }) => {
-    const room = rooms.get(roomId);
+    const upperCode = (roomId || '').trim().toUpperCase();
+    const room = rooms.get(upperCode);
     if (!room) return;
 
     const chatItem = {
@@ -830,7 +839,7 @@ io.on('connection', (socket) => {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    io.to(roomId).emit('newChat', chatItem);
+    io.to(upperCode).emit('newChat', chatItem);
   });
 
   // 7. Request Squad Analysis on Demand
