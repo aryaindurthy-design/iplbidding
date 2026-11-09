@@ -153,6 +153,23 @@ function attemptSessionRestore() {
   if (!savedSession || !savedSession.roomId) return;
 
   console.log('🔄 Reconnecting to saved session for room:', savedSession.roomId);
+  
+  // Keep active room visible immediately on screen — never revert to home page!
+  myRoomId = savedSession.roomId;
+  myTeamId = savedSession.teamId;
+  myManagerName = savedSession.managerName || 'Manager';
+  isHost = !!savedSession.isHost;
+
+  if (views.lobby) {
+    views.lobby.classList.remove('active');
+    views.lobby.style.display = 'none';
+  }
+  if (views.arena) {
+    views.arena.classList.add('active');
+    views.arena.style.display = 'block';
+  }
+  updateNavRoomMeta();
+
   socket.emit('reconnectSession', {
     roomId: savedSession.roomId,
     playerToken: myPlayerToken,
@@ -172,22 +189,44 @@ function attemptSessionRestore() {
       if (roomState.status === 'LOBBY') {
         showWaitingLobby();
       } else if (roomState.status === 'COMPLETED') {
+        if (views.waitingLobby) views.waitingLobby.style.display = 'none';
         showView('analyzer');
         renderAnalyzerView();
       } else {
-        views.waitingLobby.style.display = 'none';
+        if (views.waitingLobby) views.waitingLobby.style.display = 'none';
         showView('arena');
         renderPlayerSpotlight(roomState.currentPlayer);
         renderArenaTeams();
         updateBiddingPanel(roomState);
       }
 
-      showNotificationToast(`✅ Welcome back, <strong>${myManagerName}</strong>! Restored room <strong>${myRoomId}</strong>!`, '#22c55e');
+      showNotificationToast(`✅ Reconnected as <strong>${myManagerName}</strong> in room <strong>${myRoomId}</strong>!`, '#22c55e', 3500);
     } else {
-      console.warn('Saved room has closed or expired:', res?.message);
-      clearSession();
+      console.warn('Saved room notice:', res?.message);
+      if (res && res.message && (res.message.includes('ended') || res.message.includes('expired'))) {
+        clearSession();
+        showView('lobby');
+        showNotificationToast('⚠️ That auction room has ended.', '#f59e0b', 3500);
+      }
     }
   });
+}
+
+// Immediate Early Session Restoration (Prevents Home Page Flash on Refresh)
+const earlySavedSession = loadSession();
+if (earlySavedSession && earlySavedSession.roomId) {
+  myRoomId = earlySavedSession.roomId;
+  myTeamId = earlySavedSession.teamId;
+  myManagerName = earlySavedSession.managerName || 'Manager';
+  isHost = !!earlySavedSession.isHost;
+  if (views.lobby) {
+    views.lobby.classList.remove('active');
+    views.lobby.style.display = 'none';
+  }
+  if (views.arena) {
+    views.arena.classList.add('active');
+    views.arena.style.display = 'block';
+  }
 }
 
 // Update top navbar connection indicator (Blinking dot with status tooltip)
@@ -200,6 +239,10 @@ socket.on('connect', () => {
   }
   attemptSessionRestore();
 });
+
+if (socket.connected) {
+  attemptSessionRestore();
+}
 
 socket.on('connect_error', (err) => {
   console.warn('⚠️ Server connecting notice:', err.message);
@@ -1305,7 +1348,7 @@ function leaveAuctionRoom() {
   );
 }
 
-// 3D Stadium Doors Opening Animation
+// 3D Stadium Doors Opening Animation (Smooth, Non-Blocking)
 let isDoorsTransitioning = false;
 function playDoorsOpeningTransition(onReveal) {
   const overlay = document.getElementById('auction-doors-overlay');
@@ -1323,6 +1366,16 @@ function playDoorsOpeningTransition(onReveal) {
   overlay.classList.remove('opening', 'fade-out');
   overlay.style.display = 'flex';
   overlay.style.opacity = '1';
+  overlay.style.pointerEvents = 'all';
+
+  // Tap-to-skip failsafe: tapping doors instantly dismisses overlay
+  overlay.onclick = () => {
+    overlay.style.display = 'none';
+    overlay.style.pointerEvents = 'none';
+    overlay.classList.remove('opening', 'fade-out');
+    isDoorsTransitioning = false;
+    if (onReveal) onReveal();
+  };
 
   if (window.audioEngine) {
     window.audioEngine.playDoorsOpen();
@@ -1331,6 +1384,7 @@ function playDoorsOpeningTransition(onReveal) {
   setTimeout(() => {
     if (onReveal) onReveal();
     overlay.classList.add('opening');
+    overlay.style.pointerEvents = 'none'; // Unblock bidding controls immediately
 
     setTimeout(() => {
       overlay.classList.add('fade-out');
@@ -1338,9 +1392,18 @@ function playDoorsOpeningTransition(onReveal) {
         overlay.style.display = 'none';
         overlay.classList.remove('opening', 'fade-out');
         isDoorsTransitioning = false;
-      }, 500);
-    }, 1250);
-  }, 450);
+      }, 350);
+    }, 650);
+  }, 200);
+
+  // Absolute safety timeout: guarantee bidding can never be blocked
+  setTimeout(() => {
+    overlay.style.display = 'none';
+    overlay.style.pointerEvents = 'none';
+    overlay.classList.remove('opening', 'fade-out');
+    isDoorsTransitioning = false;
+    if (onReveal) onReveal();
+  }, 1400);
 }
 
 // Update Top App Bar (Clean, Compressed & Mobile Optimized)
@@ -1374,6 +1437,10 @@ function updateNavRoomMeta() {
 // Show Waiting Lobby
 function showWaitingLobby() {
   showView('waitingLobby');
+  if (views.waitingLobby) {
+    views.waitingLobby.style.display = 'flex';
+    views.waitingLobby.classList.add('active');
+  }
   document.getElementById('lobby-code-display').textContent = myRoomId;
   const shareUrl = `${window.location.origin}/?room=${myRoomId}`;
   
