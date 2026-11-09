@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="referrer" content="no-referrer">
   <title>IPL AUCTION</title>
-  <link rel="stylesheet" href="style.css?v=3.3.0">
+  <link rel="stylesheet" href="style.css?v=3.3.1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -15,7 +15,7 @@
       document.write('<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"><\/script>');
     }
   </script>
-  <script src="audioEngine.js?v=3.3.0"></script>
+  <script src="audioEngine.js?v=3.3.1"></script>
 </head>
 <body>
   <!-- Canvas for Confetti -->
@@ -117,7 +117,7 @@
       <!-- Quick Solo Play Button (uses whichever franchise you select) -->
       <div style="text-align: center; margin-bottom: 20px;">
         <button id="btn-quick-play" class="btn btn-secondary" style="font-size: 1rem; width: 100%; max-width: 460px; padding: 12px; border: 1px solid rgba(245,158,11,0.4); box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
-          🤖 Play Solo as <span id="quick-play-team-label" style="color: #f59e0b; font-weight: 900;">Royal Challengers Bengaluru</span> vs 9 AI Bots
+          🤖 Play Solo as <span id="quick-play-team-label" style="color: #f59e0b; font-weight: 900;">Chennai Super Kings</span> vs 9 AI Bots
         </button>
       </div>
 
@@ -140,11 +140,11 @@
               <span style="font-size: 0.75rem; color: #f59e0b; font-weight: 700;">Tap tile or dropdown</span>
             </label>
             <select id="host-team-select" class="text-input" style="padding: 10px 12px; margin-bottom: 10px; font-weight: 800; font-size: 0.95rem; background: #0f172a; border: 1px solid #f59e0b;">
-              <option value="RCB" selected>👑 Royal Challengers Bengaluru (RCB)</option>
-              <option value="CSK">🦁 Chennai Super Kings (CSK)</option>
+              <option value="CSK" selected>🦁 Chennai Super Kings (CSK)</option>
               <option value="MI">⚡ Mumbai Indians (MI)</option>
-              <option value="SRH">🦅 Sunrisers Hyderabad (SRH)</option>
+              <option value="RCB">👑 Royal Challengers Bengaluru (RCB)</option>
               <option value="KKR">💜 Kolkata Knight Riders (KKR)</option>
+              <option value="SRH">🦅 Sunrisers Hyderabad (SRH)</option>
               <option value="RR">⚔️ Rajasthan Royals (RR)</option>
               <option value="DC">🐯 Delhi Capitals (DC)</option>
               <option value="PBKS">🥁 Punjab Kings (PBKS)</option>
@@ -152,7 +152,7 @@
               <option value="GT">🛡️ Gujarat Titans (GT)</option>
             </select>
             <div id="host-teams-picker" class="teams-picker"></div>
-            <div id="host-selected-badge" class="selected-team-badge">Selected: 👑 Royal Challengers Bengaluru</div>
+            <div id="host-selected-badge" class="selected-team-badge">Selected: 🦁 Chennai Super Kings</div>
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
@@ -220,8 +220,8 @@
               <option value="CSK" selected>🦁 Chennai Super Kings (CSK)</option>
               <option value="MI">⚡ Mumbai Indians (MI)</option>
               <option value="RCB">👑 Royal Challengers Bengaluru (RCB)</option>
-              <option value="SRH">🦅 Sunrisers Hyderabad (SRH)</option>
               <option value="KKR">💜 Kolkata Knight Riders (KKR)</option>
+              <option value="SRH">🦅 Sunrisers Hyderabad (SRH)</option>
               <option value="RR">⚔️ Rajasthan Royals (RR)</option>
               <option value="DC">🐯 Delhi Capitals (DC)</option>
               <option value="PBKS">🥁 Punjab Kings (PBKS)</option>
@@ -756,6 +756,6 @@
     </div>
   </main>
 
-  <script src="app.js?v=3.3.0"></script>
+  <script src="app.js?v=3.3.1"></script>
 </body>
 </html>

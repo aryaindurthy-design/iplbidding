@@ -113,7 +113,6 @@ function iplConfirm(title, message, onConfirm, confirmText = 'Yes, Continue', da
 }
 
 // Unread chat badge manager
-let unreadChatCount = 0;
 function incrementUnreadBadge() {
   const chatTab = document.querySelector('.mobile-nav-tab[data-tab="chat"]');
   if (!chatTab) return;
@@ -137,6 +136,74 @@ function clearUnreadBadge() {
   if (badge) badge.remove();
 }
 
+// Official Roster for Instant Zero-Delay Rendering (Standard IPL Order)
+const OFFICIAL_IPL_TEAMS = [
+  { id: 'CSK', name: 'Chennai Super Kings', shortName: 'CSK', primaryColor: '#FDB913', logo: 'https://documents.iplt20.com/ipl/CSK/logos/Logooutline/CSKoutline.png', slogan: 'Whistle Podu! 🦁' },
+  { id: 'MI', name: 'Mumbai Indians', shortName: 'MI', primaryColor: '#004BA0', logo: 'https://documents.iplt20.com/ipl/MI/Logos/Logooutline/MIoutline.png', slogan: 'Duniya Hila Denge! ⚡' },
+  { id: 'RCB', name: 'Royal Challengers Bengaluru', shortName: 'RCB', primaryColor: '#EC1C24', logo: 'https://documents.iplt20.com/ipl/RCB/Logos/Logooutline/RCBoutline.png', slogan: 'Play Bold! 👑' },
+  { id: 'KKR', name: 'Kolkata Knight Riders', shortName: 'KKR', primaryColor: '#3A225D', logo: 'https://documents.iplt20.com/ipl/KKR/Logos/Logooutline/KKRoutline.png', slogan: 'Korbo Lorbo Jeetbo! 💜' },
+  { id: 'SRH', name: 'Sunrisers Hyderabad', shortName: 'SRH', primaryColor: '#F26522', logo: 'https://documents.iplt20.com/ipl/SRH/Logos/Logooutline/SRHoutline.png', slogan: 'Orange Army! 🦅' },
+  { id: 'RR', name: 'Rajasthan Royals', shortName: 'RR', primaryColor: '#EA1A85', logo: 'https://documents.iplt20.com/ipl/RR/Logos/Logooutline/RRoutline.png', slogan: 'Halla Bol! ⚔️' },
+  { id: 'DC', name: 'Delhi Capitals', shortName: 'DC', primaryColor: '#0078BC', logo: 'https://documents.iplt20.com/ipl/DC/Logos/LogoOutline/DCoutline.png', slogan: 'Roar Macha! 🐯' },
+  { id: 'PBKS', name: 'Punjab Kings', shortName: 'PBKS', primaryColor: '#DD1F2D', logo: 'https://documents.iplt20.com/ipl/PBKS/Logos/Logooutline/PBKSoutline.png', slogan: 'Sadda Punjab! 🥁' },
+  { id: 'LSG', name: 'Lucknow Super Giants', shortName: 'LSG', primaryColor: '#0057E7', logo: 'https://documents.iplt20.com/ipl/LSG/Logos/Logooutline/LSGoutline.png', slogan: 'Gazab Andaz! 🏹' },
+  { id: 'GT', name: 'Gujarat Titans', shortName: 'GT', primaryColor: '#1B2133', logo: 'https://documents.iplt20.com/ipl/GT/Logos/Logooutline/GToutline.png', slogan: 'Aava De! ⚡' }
+];
+
+// Helper to route images through same-origin proxy to eliminate ORB/CORS/hotlinking restrictions
+function getProxyOrDirectImageUrl(url) {
+  if (!url) return '';
+  if (url.startsWith('data:') || url.startsWith('/')) {
+    return url;
+  }
+  return `/api/proxy-image?url=${encodeURIComponent(url)}`;
+}
+
+// Global Application State (Declared First to Guarantee Zero-TDZ ReferenceErrors)
+let myRoomId = null;
+let myTeamId = null;
+let myManagerName = 'Manager';
+let isHost = false;
+let allTeams = OFFICIAL_IPL_TEAMS;
+let selectedHostTeamId = 'CSK';
+let selectedJoinTeamId = 'CSK';
+let roomState = null;
+let activeCritiqueTeamId = 'RCB';
+let sessionRestored = false;
+let unreadChatCount = 0;
+let roomCheckTimeout = null;
+let currentSelectedIncrement = 0.20;
+let isDoorsTransitioning = false;
+let hasRunDeepAiAnalysis = false;
+let confettiCtx = null;
+let confettiParticles = [];
+
+// DOM View Containers
+const views = {
+  lobby: document.getElementById('view-lobby'),
+  waitingLobby: document.getElementById('modal-waiting-lobby'),
+  arena: document.getElementById('view-arena'),
+  franchises: document.getElementById('view-franchises'),
+  chat: document.getElementById('view-chat'),
+  analyzer: document.getElementById('view-analyzer')
+};
+
+// DOM Nav Elements
+const nav = {
+  roomMeta: document.getElementById('nav-room-meta'),
+  roomCode: document.getElementById('nav-room-code'),
+  copyCodePill: document.getElementById('btn-copy-code-pill'),
+  myTeamName: document.getElementById('nav-my-team-name'),
+  myTeamLogo: document.getElementById('nav-my-team-logo'),
+  hostControls: document.getElementById('host-controls'),
+  btnPause: document.getElementById('btn-host-pause'),
+  btnSkip: document.getElementById('btn-host-skip'),
+  btnEnd: document.getElementById('btn-host-end'),
+  btnToggleAudio: document.getElementById('btn-toggle-audio'),
+  segmentedBar: document.getElementById('mobile-segmented-bar')
+};
+
+// Socket.io Connection
 const socket = io(SOCKET_URL, {
   transports: ['websocket', 'polling'],
   reconnection: true,
@@ -146,29 +213,13 @@ const socket = io(SOCKET_URL, {
   timeout: 10000
 });
 
-let sessionRestored = false;
+// Robust Session Restoration (Restores Room Seamlessly on Reload)
 function attemptSessionRestore() {
   if (sessionRestored) return;
   const savedSession = loadSession();
   if (!savedSession || !savedSession.roomId) return;
 
   console.log('🔄 Reconnecting to saved session for room:', savedSession.roomId);
-  
-  // Keep active room visible immediately on screen — never revert to home page!
-  myRoomId = savedSession.roomId;
-  myTeamId = savedSession.teamId;
-  myManagerName = savedSession.managerName || 'Manager';
-  isHost = !!savedSession.isHost;
-
-  if (views.lobby) {
-    views.lobby.classList.remove('active');
-    views.lobby.style.display = 'none';
-  }
-  if (views.arena) {
-    views.arena.classList.add('active');
-    views.arena.style.display = 'block';
-  }
-  updateNavRoomMeta();
 
   socket.emit('reconnectSession', {
     roomId: savedSession.roomId,
@@ -202,34 +253,16 @@ function attemptSessionRestore() {
 
       showNotificationToast(`✅ Reconnected as <strong>${myManagerName}</strong> in room <strong>${myRoomId}</strong>!`, '#22c55e', 3500);
     } else {
-      console.warn('Saved room notice:', res?.message);
-      if (res && res.message && (res.message.includes('ended') || res.message.includes('expired'))) {
-        clearSession();
-        showView('lobby');
-        showNotificationToast('⚠️ That auction room has ended.', '#f59e0b', 3500);
-      }
+      console.warn('Saved room expired or not found:', res?.message);
+      clearSession();
+      if (views.waitingLobby) views.waitingLobby.style.display = 'none';
+      showView('lobby');
+      renderTeamPickers();
     }
   });
 }
 
-// Immediate Early Session Restoration (Prevents Home Page Flash on Refresh)
-const earlySavedSession = loadSession();
-if (earlySavedSession && earlySavedSession.roomId) {
-  myRoomId = earlySavedSession.roomId;
-  myTeamId = earlySavedSession.teamId;
-  myManagerName = earlySavedSession.managerName || 'Manager';
-  isHost = !!earlySavedSession.isHost;
-  if (views.lobby) {
-    views.lobby.classList.remove('active');
-    views.lobby.style.display = 'none';
-  }
-  if (views.arena) {
-    views.arena.classList.add('active');
-    views.arena.style.display = 'block';
-  }
-}
-
-// Update top navbar connection indicator (Blinking dot with status tooltip)
+// Socket Connection Status Indicators
 socket.on('connect', () => {
   console.log('✅ Connected to Real-Time Auction Server! Socket ID:', socket.id);
   const pill = document.getElementById('connection-status-pill');
@@ -261,64 +294,6 @@ socket.on('disconnect', (reason) => {
     pill.title = '🔴 Reconnecting to Server...';
   }
 });
-
-// Official Roster for Instant Zero-Delay Rendering
-const OFFICIAL_IPL_TEAMS = [
-  { id: 'RCB', name: 'Royal Challengers Bengaluru', shortName: 'RCB', primaryColor: '#EC1C24', logo: 'https://documents.iplt20.com/ipl/RCB/Logos/Logooutline/RCBoutline.png', slogan: 'Play Bold! 👑' },
-  { id: 'CSK', name: 'Chennai Super Kings', shortName: 'CSK', primaryColor: '#FDB913', logo: 'https://documents.iplt20.com/ipl/CSK/logos/Logooutline/CSKoutline.png', slogan: 'Whistle Podu! 🦁' },
-  { id: 'MI', name: 'Mumbai Indians', shortName: 'MI', primaryColor: '#004BA0', logo: 'https://documents.iplt20.com/ipl/MI/Logos/Logooutline/MIoutline.png', slogan: 'Duniya Hila Denge! ⚡' },
-  { id: 'SRH', name: 'Sunrisers Hyderabad', shortName: 'SRH', primaryColor: '#F26522', logo: 'https://documents.iplt20.com/ipl/SRH/Logos/Logooutline/SRHoutline.png', slogan: 'Orange Army! 🦅' },
-  { id: 'KKR', name: 'Kolkata Knight Riders', shortName: 'KKR', primaryColor: '#3A225D', logo: 'https://documents.iplt20.com/ipl/KKR/Logos/Logooutline/KKRoutline.png', slogan: 'Korbo Lorbo Jeetbo! 💜' },
-  { id: 'RR', name: 'Rajasthan Royals', shortName: 'RR', primaryColor: '#EA1A85', logo: 'https://documents.iplt20.com/ipl/RR/Logos/Logooutline/RRoutline.png', slogan: 'Halla Bol! ⚔️' },
-  { id: 'DC', name: 'Delhi Capitals', shortName: 'DC', primaryColor: '#0078BC', logo: 'https://documents.iplt20.com/ipl/DC/Logos/LogoOutline/DCoutline.png', slogan: 'Roar Macha! 🐯' },
-  { id: 'PBKS', name: 'Punjab Kings', shortName: 'PBKS', primaryColor: '#DD1F2D', logo: 'https://documents.iplt20.com/ipl/PBKS/Logos/Logooutline/PBKSoutline.png', slogan: 'Sadda Punjab! 🥁' },
-  { id: 'LSG', name: 'Lucknow Super Giants', shortName: 'LSG', primaryColor: '#0057E7', logo: 'https://documents.iplt20.com/ipl/LSG/Logos/Logooutline/LSGoutline.png', slogan: 'Gazab Andaz! 🏹' },
-  { id: 'GT', name: 'Gujarat Titans', shortName: 'GT', primaryColor: '#1B2133', logo: 'https://documents.iplt20.com/ipl/GT/Logos/Logooutline/GToutline.png', slogan: 'Aava De! ⚡' }
-];
-
-// Helper to route images through same-origin proxy to eliminate ORB/CORS/hotlinking restrictions
-function getProxyOrDirectImageUrl(url) {
-  if (!url) return '';
-  if (url.startsWith('data:') || url.startsWith('/')) {
-    return url;
-  }
-  return `/api/proxy-image?url=${encodeURIComponent(url)}`;
-}
-
-// State
-let myRoomId = null;
-let myTeamId = null;
-let myManagerName = 'Manager';
-let isHost = false;
-let allTeams = OFFICIAL_IPL_TEAMS;
-let selectedHostTeamId = 'RCB';
-let selectedJoinTeamId = 'CSK';
-let roomState = null;
-let activeCritiqueTeamId = 'RCB';
-
-// DOM Elements
-const views = {
-  lobby: document.getElementById('view-lobby'),
-  waitingLobby: document.getElementById('modal-waiting-lobby'),
-  arena: document.getElementById('view-arena'),
-  franchises: document.getElementById('view-franchises'),
-  chat: document.getElementById('view-chat'),
-  analyzer: document.getElementById('view-analyzer')
-};
-
-const nav = {
-  roomMeta: document.getElementById('nav-room-meta'),
-  roomCode: document.getElementById('nav-room-code'),
-  copyCodePill: document.getElementById('btn-copy-code-pill'),
-  myTeamName: document.getElementById('nav-my-team-name'),
-  myTeamLogo: document.getElementById('nav-my-team-logo'),
-  hostControls: document.getElementById('host-controls'),
-  btnPause: document.getElementById('btn-host-pause'),
-  btnSkip: document.getElementById('btn-host-skip'),
-  btnEnd: document.getElementById('btn-host-end'),
-  btnToggleAudio: document.getElementById('btn-toggle-audio'),
-  segmentedBar: document.getElementById('mobile-segmented-bar')
-};
 
 // --- INITIALIZATION ---
 window.addEventListener('DOMContentLoaded', async () => {
@@ -380,7 +355,7 @@ function showView(viewKey) {
 }
 
 // Select Host Team
-function selectHostTeam(team) {
+function selectHostTeam(team, skipAudio = false) {
   selectedHostTeamId = team.id;
   const hostPicker = document.getElementById('host-teams-picker');
   if (hostPicker) {
@@ -413,11 +388,11 @@ function selectHostTeam(team) {
     badge.textContent = `Selected: ${team.name}`;
     badge.style.color = team.primaryColor;
   }
-  if (window.audioEngine) window.audioEngine.playBidSound();
+  if (!skipAudio && window.audioEngine) window.audioEngine.playBidSound();
 }
 
 // Select Join Team
-function selectJoinTeam(team) {
+function selectJoinTeam(team, skipAudio = false) {
   selectedJoinTeamId = team.id;
   const joinPicker = document.getElementById('join-teams-picker');
   if (joinPicker) {
@@ -444,7 +419,7 @@ function selectJoinTeam(team) {
     badge.textContent = `Selected: ${team.name}`;
     badge.style.color = team.primaryColor;
   }
-  if (window.audioEngine) window.audioEngine.playBidSound();
+  if (!skipAudio && window.audioEngine) window.audioEngine.playBidSound();
 }
 
 // Render Team Picker Tiles in Lobby with Official Logos
@@ -492,13 +467,12 @@ function renderTeamPickers() {
 
   // Update initial badges
   const hostTeam = allTeams.find(t => t.id === selectedHostTeamId);
-  if (hostTeam) selectHostTeam(hostTeam);
+  if (hostTeam) selectHostTeam(hostTeam, true);
   const joinTeam = allTeams.find(t => t.id === selectedJoinTeamId);
-  if (joinTeam) selectJoinTeam(joinTeam);
+  if (joinTeam) selectJoinTeam(joinTeam, true);
 }
 
 // Live Room Availability Checker for Friends
-let roomCheckTimeout = null;
 function checkRoomCodeAvailability(code) {
   if (roomCheckTimeout) clearTimeout(roomCheckTimeout);
   const statusBox = document.getElementById('join-room-status-box');
@@ -1124,9 +1098,7 @@ function setupEventListeners() {
   }
 }
 
-// Global active bidding increment (default: +20L)
-let currentSelectedIncrement = 0.20;
-
+// Active bidding increment helper (default: +20L)
 function calculateTargetBid(inc = currentSelectedIncrement) {
   if (!roomState) return 2.0;
   const currentBid = roomState.currentBid || 0;
@@ -1349,7 +1321,6 @@ function leaveAuctionRoom() {
 }
 
 // 3D Stadium Doors Opening Animation (Smooth, Non-Blocking)
-let isDoorsTransitioning = false;
 function playDoorsOpeningTransition(onReveal) {
   const overlay = document.getElementById('auction-doors-overlay');
   if (!overlay || isDoorsTransitioning) {
@@ -2140,8 +2111,6 @@ function renderFranchisesTab() {
 }
 
 // --- PRO AI SQUAD ANALYZER & LIVE TOURNAMENT BENCHMARK ---
-let hasRunDeepAiAnalysis = false;
-
 // Authentic Mathematical Squad Evaluation Engine (0 - 100 Scale)
 function computeAuthenticTeamAnalysis(team) {
   const squad = team.squad || [];
@@ -2518,9 +2487,6 @@ ${(team.squad || []).map((p, i) => `${i+1}. ${p.name} (${p.role} - ₹${(p.soldP
 }
 
 // Confetti Setup
-let confettiCtx = null;
-let confettiParticles = [];
-
 function setupConfetti() {
   const canvas = document.getElementById('confetti-canvas');
   if (!canvas) return;
