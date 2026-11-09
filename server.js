@@ -587,8 +587,8 @@ io.on('connection', (socket) => {
     callback({ success: true, roomId, playerToken: token, state: getPublicRoomState(room) });
   });
 
-  // 1b. Reconnect Session (Zero-Data-Loss on Page Reload)
-  socket.on('reconnectSession', ({ roomId, playerToken }, callback) => {
+  // 1b. Reconnect Session (Zero-Data-Loss on Page Reload & Reconnect)
+  socket.on('reconnectSession', ({ roomId, playerToken, teamId }, callback) => {
     const upperCode = (roomId || '').trim().toUpperCase();
     const room = rooms.get(upperCode);
     if (!room) {
@@ -605,7 +605,7 @@ io.on('connection', (socket) => {
       room.hostSocketId = socket.id; // Update host socket ID on reload!
     }
 
-    // Check if player owns a team
+    // Check if player owns a team by token
     let myTeam = null;
     for (const t of Object.values(room.teams)) {
       if (t.ownerToken && t.ownerToken === playerToken) {
@@ -622,6 +622,19 @@ io.on('connection', (socket) => {
       myTeam.ownerSocketId = socket.id;
       myTeam.ownerToken = playerToken;
       currentTeamId = myTeam.id;
+    }
+
+    // If still not found by token, check if user provided their saved teamId
+    if (!myTeam && teamId && room.teams[teamId]) {
+      const candidateTeam = room.teams[teamId];
+      // Only claim if it matches player's token OR has disconnected socket OR is marked bot
+      if (candidateTeam.ownerToken === playerToken || candidateTeam.isBot || !candidateTeam.ownerSocketId) {
+        candidateTeam.ownerSocketId = socket.id;
+        candidateTeam.ownerToken = playerToken;
+        candidateTeam.isBot = false;
+        myTeam = candidateTeam;
+        currentTeamId = candidateTeam.id;
+      }
     }
 
     const publicState = getPublicRoomState(room);
@@ -642,23 +655,27 @@ io.on('connection', (socket) => {
   });
 
   // 1c. Query Room Info & Available Franchises
-  socket.on('getRoomInfo', ({ roomId }, callback) => {
+  socket.on('getRoomInfo', ({ roomId, playerToken }, callback) => {
     const upperCode = (roomId || '').trim().toUpperCase();
     const room = rooms.get(upperCode);
     if (!room) {
       if (callback) callback({ success: false, message: 'Room code not found' });
       return;
     }
-    const teamsList = Object.values(room.teams).map(t => ({
-      id: t.id,
-      name: t.name,
-      shortName: t.shortName,
-      logo: t.logo,
-      primaryColor: t.primaryColor,
-      isTaken: !!t.ownerSocketId,
-      ownerName: t.ownerName,
-      isBot: t.isBot
-    }));
+    const teamsList = Object.values(room.teams).map(t => {
+      const isMine = !!(playerToken && t.ownerToken === playerToken);
+      return {
+        id: t.id,
+        name: t.name,
+        shortName: t.shortName,
+        logo: t.logo,
+        primaryColor: t.primaryColor,
+        isTaken: !isMine && (!!t.ownerSocketId || (!t.isBot && !!t.ownerToken)),
+        isMine: isMine,
+        ownerName: t.ownerName,
+        isBot: t.isBot
+      };
+    });
     if (callback) {
       callback({
         success: true,
@@ -843,7 +860,7 @@ io.on('connection', (socket) => {
     if (callback) callback({ success: true, state: publicState });
   });
 
-  // 3. Start Auction (Host or any joined Room Member can start)
+  // 3. Start Auction (Strictly Host-Only)
   socket.on('startAuction', ({ roomId, playerToken, fillWithBots }, callback) => {
     const upperCode = (roomId || '').trim().toUpperCase();
     const room = rooms.get(upperCode);
@@ -853,16 +870,14 @@ io.on('connection', (socket) => {
     }
 
     const isHost = (room.hostSocketId === socket.id) || (playerToken && room.hostToken === playerToken);
-    const isMember = isHost || Object.values(room.teams).some(t => t.ownerSocketId === socket.id || (playerToken && t.ownerToken === playerToken));
-
-    if (!isMember) {
-      console.warn(`[Start Auction Rejected] Socket: ${socket.id} is not in room ${upperCode}`);
-      if (callback) callback({ success: false, message: 'You must join this room to start the auction!' });
+    if (!isHost) {
+      console.warn(`[Start Auction Rejected] Socket: ${socket.id} is not Host of room ${upperCode}`);
+      if (callback) callback({ success: false, message: 'Only the room Host who created the room can start the auction!' });
       return;
     }
 
     // Ensure socket is joined to the room's socket.io channel
-    if (isHost) room.hostSocketId = socket.id;
+    room.hostSocketId = socket.id;
     socket.join(upperCode);
 
     // Update fillWithBots setting if provided
@@ -880,7 +895,7 @@ io.on('connection', (socket) => {
       });
     }
 
-    console.log(`[Auction Started] Room: ${upperCode} by ${isHost ? 'Host' : 'Member'} (Socket: ${socket.id})`);
+    console.log(`[Auction Started] Room: ${upperCode} by Host ${room.hostName} (Socket: ${socket.id})`);
     startAuctionClock(room);
     const publicState = getPublicRoomState(room);
     if (callback) callback({ success: true, state: publicState });
@@ -919,18 +934,24 @@ io.on('connection', (socket) => {
     executeBid(room, teamId, bidToPlace, team.ownerName);
   });
 
-  // 5. Host Controls: Skip, Pause, Resume, End
-  socket.on('skipPlayer', ({ roomId }) => {
+  // 5. Host Controls: Skip, Pause, Resume, End (Strictly Host-Only)
+  socket.on('skipPlayer', ({ roomId, playerToken }) => {
     const upperCode = (roomId || '').trim().toUpperCase();
     const room = rooms.get(upperCode);
-    if (!room || room.hostSocketId !== socket.id) return;
+    if (!room) return;
+    const isHost = (room.hostSocketId === socket.id) || (playerToken && room.hostToken === playerToken);
+    if (!isHost) return;
+    room.hostSocketId = socket.id;
     resolveCurrentAuction(room);
   });
 
-  socket.on('togglePause', ({ roomId }) => {
+  socket.on('togglePause', ({ roomId, playerToken }) => {
     const upperCode = (roomId || '').trim().toUpperCase();
     const room = rooms.get(upperCode);
-    if (!room || room.hostSocketId !== socket.id) return;
+    if (!room) return;
+    const isHost = (room.hostSocketId === socket.id) || (playerToken && room.hostToken === playerToken);
+    if (!isHost) return;
+    room.hostSocketId = socket.id;
     if (room.status === 'BIDDING') {
       stopAuctionClock(room);
       room.status = 'PAUSED';
@@ -940,10 +961,13 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('endAuctionNow', ({ roomId }) => {
+  socket.on('endAuctionNow', ({ roomId, playerToken }) => {
     const upperCode = (roomId || '').trim().toUpperCase();
     const room = rooms.get(upperCode);
-    if (!room || room.hostSocketId !== socket.id) return;
+    if (!room) return;
+    const isHost = (room.hostSocketId === socket.id) || (playerToken && room.hostToken === playerToken);
+    if (!isHost) return;
+    room.hostSocketId = socket.id;
     completeAuction(room);
   });
 

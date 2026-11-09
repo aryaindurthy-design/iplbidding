@@ -574,49 +574,114 @@ class AudioEngine {
     noise.stop(now + 0.2);
   }
 
-  // Silky-Smooth Acoustic Bid Click
+  // Silky-Smooth Resonant Acoustic Bid Paddle Strike
   playBidSound() {
     if (this.muted) return;
     this.init();
     const now = this.ctx.currentTime;
 
-    const subOsc = this.ctx.createOscillator();
-    const subGain = this.ctx.createGain();
-    subOsc.type = 'sine';
-    subOsc.frequency.setValueAtTime(120, now);
-    subOsc.frequency.exponentialRampToValueAtTime(45, now + 0.035);
+    // 1. Warm Mahogany Strike (Acoustic Body)
+    const bodyOsc = this.ctx.createOscillator();
+    const bodyGain = this.ctx.createGain();
+    bodyOsc.type = 'triangle';
+    bodyOsc.frequency.setValueAtTime(320, now);
+    bodyOsc.frequency.exponentialRampToValueAtTime(80, now + 0.09);
 
-    subGain.gain.setValueAtTime(0.35, now);
-    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+    bodyGain.gain.setValueAtTime(0.75, now);
+    bodyGain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
 
-    subOsc.connect(subGain);
-    subGain.connect(this.ctx.destination);
-    subOsc.start(now);
-    subOsc.stop(now + 0.035);
+    bodyOsc.connect(bodyGain);
+    bodyGain.connect(this.ctx.destination);
+    bodyOsc.start(now);
+    bodyOsc.stop(now + 0.09);
 
-    const bufferSize = this.ctx.sampleRate * 0.025;
+    // 2. High-Frequency Tactile Paddle Click
+    const bufferSize = this.ctx.sampleRate * 0.035;
     const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.006));
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.008));
     }
     const clickNoise = this.ctx.createBufferSource();
     clickNoise.buffer = buffer;
 
     const filter = this.ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(850, now);
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(1400, now);
+    filter.Q.setValueAtTime(2.0, now);
 
     const clickGain = this.ctx.createGain();
-    clickGain.gain.setValueAtTime(0.25, now);
-    clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+    clickGain.gain.setValueAtTime(0.55, now);
+    clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
 
     clickNoise.connect(filter);
     filter.connect(clickGain);
     clickGain.connect(this.ctx.destination);
 
     clickNoise.start(now);
-    clickNoise.stop(now + 0.025);
+    clickNoise.stop(now + 0.035);
+
+    // 3. Satisfying Golden Chime Harmonic (Positive Feedback)
+    const chimeOsc = this.ctx.createOscillator();
+    const chimeGain = this.ctx.createGain();
+    chimeOsc.type = 'sine';
+    chimeOsc.frequency.setValueAtTime(880, now + 0.01);
+    chimeOsc.frequency.exponentialRampToValueAtTime(1320, now + 0.08);
+
+    chimeGain.gain.setValueAtTime(0.01, now);
+    chimeGain.gain.linearRampToValueAtTime(0.28, now + 0.02);
+    chimeGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+    chimeOsc.connect(chimeGain);
+    chimeGain.connect(this.ctx.destination);
+    chimeOsc.start(now + 0.01);
+    chimeOsc.stop(now + 0.12);
+  }
+
+  // Escalating 5-4-3-2-1 Countdown Audio (Tension-Building Stadium Clock)
+  playCountdownTick(secondsLeft) {
+    if (this.muted) return;
+    this.init();
+    const now = this.ctx.currentTime;
+
+    const sec = Math.max(1, Math.min(5, Math.round(secondsLeft)));
+    
+    // Frequencies: 5: 480Hz | 4: 580Hz | 3: 720Hz | 2: 900Hz | 1: 1150Hz
+    const freqs = { 5: 480, 4: 580, 3: 720, 2: 900, 1: 1150 };
+    const pitch = freqs[sec] || 600;
+
+    // Primary High-Tension Strike
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = sec <= 2 ? 'sawtooth' : 'sine';
+    osc.frequency.setValueAtTime(pitch, now);
+    osc.frequency.exponentialRampToValueAtTime(pitch * 0.4, now + 0.08);
+
+    const volume = sec === 1 ? 0.65 : (sec === 2 ? 0.55 : 0.45);
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + (sec === 1 ? 0.12 : 0.08));
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + (sec === 1 ? 0.12 : 0.08));
+
+    // For second 2 & 1: Add urgent double-tick pulse
+    if (sec <= 2) {
+      const pulseOsc = this.ctx.createOscillator();
+      const pulseGain = this.ctx.createGain();
+      pulseOsc.type = 'sine';
+      pulseOsc.frequency.setValueAtTime(pitch * 1.35, now + 0.04);
+      pulseOsc.frequency.exponentialRampToValueAtTime(pitch * 0.7, now + 0.11);
+
+      pulseGain.gain.setValueAtTime(0.35, now + 0.04);
+      pulseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+
+      pulseOsc.connect(pulseGain);
+      pulseGain.connect(this.ctx.destination);
+      pulseOsc.start(now + 0.04);
+      pulseOsc.stop(now + 0.11);
+    }
   }
 
   // Dramatic 3D Stadium Doors Opening / Arena Entrance SFX
@@ -756,7 +821,7 @@ class AudioEngine {
     return this.catalog[chosenKey];
   }
 
-  // PLAY TEAM ANTHEM AT EXACT PEAK DROP POINT (5.8s total duration with smooth 3-second fadeout)
+  // PLAY TEAM ANTHEM AT EXACT PEAK DROP POINT (Full duration with gentle 2.5-second volume fadeout)
   playTeamAnthem(teamId) {
     if (this.muted) return null;
     this.init();
@@ -776,14 +841,14 @@ class AudioEngine {
     }
 
     audio.play().then(() => {
-      // Play full energy for 2.8s, then smoothly fade out over the last 3 seconds!
+      // Play full music at full volume for 3.5 seconds
       this.fadeTimer = setTimeout(() => {
         let vol = 1.0;
-        const fadeSteps = 30; // 30 steps * 100ms = 3.0 seconds fadeout!
+        const fadeSteps = 25; // 25 steps * 100ms = 2.5 seconds gentle fadeout!
         const stepVol = 1.0 / fadeSteps;
         this.fadeInterval = setInterval(() => {
           vol -= stepVol;
-          if (vol <= 0.04) {
+          if (vol <= 0.03) {
             clearInterval(this.fadeInterval);
             this.fadeInterval = null;
             this.stopCurrentAudio();
@@ -791,7 +856,7 @@ class AudioEngine {
             this.currentAudioEl.volume = Math.max(0, vol);
           }
         }, 100);
-      }, 2800);
+      }, 3500);
     }).catch(err => {
       console.warn('Audio playback notice:', err);
     });

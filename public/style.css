@@ -464,23 +464,25 @@ body {
 .player-photo-wrapper {
   position: relative;
   width: 100%;
-  height: 160px;
+  height: 205px;
   border-radius: 13px;
   background: radial-gradient(circle at 50% 30%, #293856 0%, #0e1422 100%);
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   overflow: hidden;
 }
 
 @media (min-width: 768px) {
-  .player-photo-wrapper { height: 185px; }
+  .player-photo-wrapper { height: 215px; }
 }
 
 .player-photo {
   max-width: 100%;
+  height: 100%;
   max-height: 100%;
   object-fit: contain;
+  object-position: center bottom;
 }
 
 .player-role-badge {
@@ -620,7 +622,7 @@ body {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid rgba(255, 255, 255, 0.13);
-  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  padding: 5px 10px calc(5px + env(safe-area-inset-bottom));
   z-index: 150;
   box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.7);
 }
@@ -631,10 +633,30 @@ body {
   width: 100%;
 }
 
+.dock-squad-pill {
+  cursor: pointer;
+  padding: 3px 12px;
+  border-radius: 9999px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
+  transition: all 0.2s ease;
+}
+.dock-squad-pill:active {
+  transform: scale(0.96);
+  background: rgba(245, 158, 11, 0.3);
+}
+
 .quick-inc-row {
   display: flex;
   gap: 5px;
-  margin-bottom: 7px;
+  margin-bottom: 5px;
 }
 
 .inc-btn {
@@ -1327,7 +1349,7 @@ body {
   #host-controls button { padding: 3px 5px !important; font-size: 0.72rem !important; min-width: 22px; min-height: 22px; }
   .exit-pill-btn { padding: 3px 5px !important; font-size: 0.65rem !important; }
 
-  .player-photo-wrapper { height: 150px; }
+  .player-photo-wrapper { height: 190px; }
   .player-name { font-size: 1.1rem; }
   .current-bid-num { font-size: 1.5rem; }
   .paddle-btn { font-size: 0.95rem; }
@@ -1339,4 +1361,9 @@ body {
 
   .sold-content-card { border-radius: 16px; }
   .sold-banner-price { font-size: 1.5rem; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }

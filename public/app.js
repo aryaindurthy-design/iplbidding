@@ -155,7 +155,8 @@ function attemptSessionRestore() {
   console.log('🔄 Reconnecting to saved session for room:', savedSession.roomId);
   socket.emit('reconnectSession', {
     roomId: savedSession.roomId,
-    playerToken: myPlayerToken
+    playerToken: myPlayerToken,
+    teamId: savedSession.teamId
   }, (res) => {
     if (res && res.success) {
       sessionRestored = true;
@@ -466,7 +467,7 @@ function checkRoomCodeAvailability(code) {
   }
 
   roomCheckTimeout = setTimeout(() => {
-    socket.emit('getRoomInfo', { roomId: code }, (res) => {
+    socket.emit('getRoomInfo', { roomId: code, playerToken: myPlayerToken }, (res) => {
       if (!statusBox) return;
       if (res && res.success) {
         statusBox.style.display = 'block';
@@ -501,14 +502,15 @@ function updateJoinPickerWithRoomData(teamsList) {
 
   teamsList.forEach(t => {
     const isTaken = t.isTaken;
+    const isMine = !!t.isMine;
     if (!isTaken && !firstAvailableTeam) {
       firstAvailableTeam = t;
     }
 
-    if (!isTaken) {
+    if (!isTaken || isMine) {
       const opt = document.createElement('option');
       opt.value = t.id;
-      opt.textContent = `${t.name} (${t.shortName})`;
+      opt.textContent = `${t.name} (${t.shortName})${isMine ? ' [YOUR TEAM]' : ''}`;
       joinSelect.appendChild(opt);
     }
 
@@ -516,7 +518,18 @@ function updateJoinPickerWithRoomData(teamsList) {
     jTile.className = `team-tile ${t.id === selectedJoinTeamId ? 'selected' : ''}`;
     jTile.dataset.teamId = t.id;
 
-    if (isTaken) {
+    if (isMine) {
+      jTile.style.opacity = '1.0';
+      jTile.style.cursor = 'pointer';
+      jTile.style.borderColor = '#22c55e';
+      jTile.style.boxShadow = '0 0 16px rgba(34,197,94,0.4)';
+      jTile.innerHTML = `
+        <img class="tile-logo-img" src="${getProxyOrDirectImageUrl(t.logo)}" alt="${t.shortName}">
+        <div class="tile-name">${t.shortName}</div>
+        <div style="font-size: 0.58rem; color: #22c55e; font-weight: 800; text-transform: uppercase;">YOUR TEAM (CLAIMED)</div>
+      `;
+      jTile.onclick = () => selectJoinTeam(t);
+    } else if (isTaken) {
       jTile.style.opacity = '0.38';
       jTile.style.cursor = 'not-allowed';
       jTile.style.borderColor = 'rgba(239,68,68,0.3)';
@@ -547,8 +560,8 @@ function updateJoinPickerWithRoomData(teamsList) {
     joinPicker.appendChild(jTile);
   });
 
-  // If current join team is taken, auto-switch to first open team
-  const currentIsTaken = teamsList.find(t => t.id === selectedJoinTeamId && t.isTaken);
+  // If current join team is taken and NOT ours, auto-switch to first open team
+  const currentIsTaken = teamsList.find(t => t.id === selectedJoinTeamId && t.isTaken && !t.isMine);
   if (currentIsTaken && firstAvailableTeam) {
     selectJoinTeam(firstAvailableTeam);
   }
@@ -587,26 +600,30 @@ function setupEventListeners() {
     showNotificationToast(isMuted ? '🔇 Sound OFF' : '🔊 Sound ON', isMuted ? '#ef4444' : '#22c55e', 2000);
   });
 
-  // Host Pause, Skip & End Controls
+  // Host Pause, Skip & End Controls (Enforced strictly for Room Host)
   if (nav.btnPause) {
     nav.btnPause.addEventListener('click', () => {
-      if (myRoomId) socket.emit('togglePause', { roomId: myRoomId });
+      if (myRoomId) socket.emit('togglePause', { roomId: myRoomId, playerToken: myPlayerToken });
     });
   }
 
-  nav.btnSkip.addEventListener('click', () => {
-    if (myRoomId) socket.emit('skipPlayer', { roomId: myRoomId });
-  });
+  if (nav.btnSkip) {
+    nav.btnSkip.addEventListener('click', () => {
+      if (myRoomId) socket.emit('skipPlayer', { roomId: myRoomId, playerToken: myPlayerToken });
+    });
+  }
 
-  nav.btnEnd.addEventListener('click', () => {
-    iplConfirm(
-      '🛑 End Auction Early?',
-      'End the auction now and jump to the Pro AI Squad Analyzer?',
-      () => { if (myRoomId) socket.emit('endAuctionNow', { roomId: myRoomId }); },
-      'Yes, End Auction',
-      true
-    );
-  });
+  if (nav.btnEnd) {
+    nav.btnEnd.addEventListener('click', () => {
+      iplConfirm(
+        '🛑 End Auction Early?',
+        'End the auction now and jump to the Pro AI Squad Analyzer?',
+        () => { if (myRoomId) socket.emit('endAuctionNow', { roomId: myRoomId, playerToken: myPlayerToken }); },
+        'Yes, End Auction',
+        true
+      );
+    });
+  }
 
   // Leave / Exit Auction Room Handlers
   const navExitBtn = document.getElementById('btn-nav-exit-room');
@@ -1380,29 +1397,33 @@ function showWaitingLobby() {
   const btmStartBtn = document.getElementById('btn-start-auction-now');
   const waitingNotice = document.getElementById('lobby-waiting-notice');
 
-  if (topStartBtn) topStartBtn.style.display = 'block';
-  if (btmStartBtn) btmStartBtn.style.display = 'block';
-
   if (isHost) {
-    if (topStartBtn) topStartBtn.innerHTML = 'START LIVE AUCTION NOW 🔨 (Host)';
-    if (btmStartBtn) btmStartBtn.innerHTML = 'START AUCTION 🔨';
+    if (topStartBtn) {
+      topStartBtn.style.display = 'block';
+      topStartBtn.innerHTML = 'START LIVE AUCTION NOW 🔨 (👑 Room Host)';
+    }
+    if (btmStartBtn) {
+      btmStartBtn.style.display = 'block';
+      btmStartBtn.innerHTML = 'START AUCTION 🔨';
+    }
     if (waitingNotice) {
       waitingNotice.style.display = 'block';
       waitingNotice.style.color = '#a7f3d0';
       waitingNotice.style.background = 'rgba(34,197,94,0.1)';
       waitingNotice.style.borderColor = 'rgba(34,197,94,0.3)';
-      waitingNotice.innerHTML = `👑 You are the <strong>Host</strong>! Share the code <strong>${myRoomId}</strong> with friends. Tap above to start anytime!`;
+      waitingNotice.innerHTML = `👑 You are the <strong>Host</strong>! Share the code <strong>${myRoomId}</strong> with friends. Tap <strong>START AUCTION</strong> above when everyone is ready!`;
     }
   } else {
+    // Non-hosts cannot start, pause or skip auction
+    if (topStartBtn) topStartBtn.style.display = 'none';
+    if (btmStartBtn) btmStartBtn.style.display = 'none';
     const hostName = (roomState && roomState.hostName) ? roomState.hostName : 'Host';
-    if (topStartBtn) topStartBtn.innerHTML = 'START LIVE AUCTION NOW 🔨 (Ready!)';
-    if (btmStartBtn) btmStartBtn.innerHTML = 'START AUCTION 🔨';
     if (waitingNotice) {
       waitingNotice.style.display = 'block';
       waitingNotice.style.color = '#38bdf8';
-      waitingNotice.style.background = 'rgba(56,189,248,0.1)';
-      waitingNotice.style.borderColor = 'rgba(56,189,248,0.3)';
-      waitingNotice.innerHTML = `👥 Connected with <strong>${hostName}</strong>! Both you and the host can tap <strong>START AUCTION</strong> above when ready!`;
+      waitingNotice.style.background = 'rgba(56,189,248,0.12)';
+      waitingNotice.style.borderColor = 'rgba(56,189,248,0.4)';
+      waitingNotice.innerHTML = `⏳ Waiting for Room Host (<strong>${hostName}</strong>) to start the auction... (Get ready!)`;
     }
   }
 
@@ -1589,7 +1610,7 @@ socket.on('timerTick', ({ timer, status }) => {
 
   if (timer <= 5) {
     timerCircle.classList.add('danger');
-    window.audioEngine.playTick(timer * 110 + 220);
+    if (window.audioEngine) window.audioEngine.playCountdownTick(timer);
 
     const hammerStatus = document.getElementById('hammer-status');
     if (timer <= 2) {
@@ -2051,63 +2072,192 @@ function renderFranchisesTab() {
   });
 }
 
-// --- PRO AI SQUAD ANALYZER RENDERING ---
+// --- PRO AI SQUAD ANALYZER & LIVE TOURNAMENT BENCHMARK ---
+let hasRunDeepAiAnalysis = false;
+
+// Authentic Mathematical Squad Evaluation Engine (0 - 100 Scale)
+function computeAuthenticTeamAnalysis(team) {
+  const squad = team.squad || [];
+  if (squad.length === 0) {
+    return {
+      overallScore: 0,
+      battingScore: 0,
+      bowlingScore: 0,
+      balanceScore: 0,
+      tier: 'UNFORMED',
+      tierColor: '#64748b',
+      steal: 'No signings yet',
+      overpay: 'No signings yet',
+      summary: `${team.name} has not signed any players yet. Tap Run Deep AI Analysis after bidding!`
+    };
+  }
+
+  const batters = squad.filter(p => ['Batsman', 'Wicket-Keeper'].includes(p.role));
+  const allrounders = squad.filter(p => p.role === 'All-Rounder');
+  const bowlers = squad.filter(p => p.role === 'Bowler');
+  const overseas = squad.filter(p => p.type === 'Overseas' || p.country !== 'IND');
+
+  // 1. Authentic Batting Depth (0 - 100)
+  let batPoints = 0;
+  batters.forEach(p => {
+    const srBonus = p.stats?.sr ? Math.min(10, Math.max(-6, (p.stats.sr - 128) / 4)) : 0;
+    batPoints += (p.rating || 82) + srBonus;
+  });
+  allrounders.forEach(p => {
+    const srBonus = p.stats?.sr ? Math.min(8, Math.max(-4, (p.stats.sr - 125) / 5)) : 0;
+    batPoints += ((p.rating || 80) * 0.75) + srBonus;
+  });
+  const totalBatters = batters.length + allrounders.length;
+  let battingScore = totalBatters > 0 ? Math.round(batPoints / Math.max(totalBatters, 4)) : 35;
+  if (batters.length < 3) battingScore -= (3 - batters.length) * 8;
+  battingScore = Math.max(30, Math.min(99, battingScore));
+
+  // 2. Authentic Bowling Penetration & Death Bowling (0 - 100)
+  let bowlPoints = 0;
+  bowlers.forEach(p => {
+    const econBonus = p.stats?.econ ? Math.min(8, Math.max(-8, (8.3 - p.stats.econ) * 4)) : 0;
+    bowlPoints += (p.rating || 82) + econBonus;
+  });
+  allrounders.forEach(p => {
+    const econBonus = p.stats?.econ ? Math.min(6, Math.max(-5, (8.8 - p.stats.econ) * 3)) : 0;
+    bowlPoints += ((p.rating || 80) * 0.70) + econBonus;
+  });
+  const totalBowlers = bowlers.length + allrounders.length;
+  let bowlingScore = totalBowlers > 0 ? Math.round(bowlPoints / Math.max(totalBowlers, 4)) : 32;
+  if (bowlers.length < 3) bowlingScore -= (3 - bowlers.length) * 8;
+  bowlingScore = Math.max(30, Math.min(99, bowlingScore));
+
+  // 3. Squad Synergy, All-Rounders & Balance (0 - 100)
+  let balanceScore = 65;
+  if (allrounders.length >= 2) balanceScore += 12;
+  if (batters.length >= 3 && bowlers.length >= 3) balanceScore += 12;
+  if (overseas.length > 4) balanceScore -= 25; // Penalty for exceeding official overseas limit
+  if (squad.length < 11) balanceScore -= (11 - squad.length) * 4; // Penalty for incomplete XI
+  balanceScore = Math.max(35, Math.min(98, balanceScore));
+
+  // Overall Weighted Rating out of 100
+  const overallScore = Math.max(30, Math.min(99, Math.round(battingScore * 0.40 + bowlingScore * 0.40 + balanceScore * 0.20)));
+
+  // Tier Classification
+  let tier = 'B';
+  let tierColor = '#38bdf8';
+  if (overallScore >= 92) { tier = 'SSS TITAN'; tierColor = '#eab308'; }
+  else if (overallScore >= 87) { tier = 'S GOD'; tierColor = '#f59e0b'; }
+  else if (overallScore >= 80) { tier = 'A ELITE'; tierColor = '#22c55e'; }
+  else if (overallScore >= 72) { tier = 'B STRONG'; tierColor = '#38bdf8'; }
+  else if (overallScore >= 60) { tier = 'C AVERAGE'; tierColor = '#a855f7'; }
+  else { tier = 'D REBUILD'; tierColor = '#ef4444'; }
+
+  // Best Steal & Biggest Gamble
+  let steal = squad[0]?.name || 'N/A';
+  let maxStealMargin = -999;
+  let overpay = squad[0]?.name || 'N/A';
+  let maxOverpayMargin = -999;
+  squad.forEach(p => {
+    const price = p.soldPrice || p.basePrice || 2;
+    const val = (p.rating || 80) / 10;
+    const stealMargin = val - price;
+    const overpayMargin = price - val;
+    if (stealMargin > maxStealMargin) { maxStealMargin = stealMargin; steal = `${p.name} (₹${price.toFixed(2)} Cr)`; }
+    if (overpayMargin > maxOverpayMargin) { maxOverpayMargin = overpayMargin; overpay = `${p.name} (₹${price.toFixed(2)} Cr)`; }
+  });
+
+  return {
+    overallScore,
+    battingScore,
+    bowlingScore,
+    balanceScore,
+    tier,
+    tierColor,
+    steal,
+    overpay,
+    summary: `${team.name} built a ${tier} squad with ${squad.length} players. Batting unit rated ${battingScore}/100, bowling strike force rated ${bowlingScore}/100, and overall squad synergy rated ${balanceScore}/100.`
+  };
+}
+
 function renderAnalyzerView() {
   if (!roomState || !roomState.teams) return;
+
+  const triggerBtn = document.getElementById('btn-trigger-ai-analysis');
+  if (triggerBtn && !triggerBtn.dataset.wired) {
+    triggerBtn.dataset.wired = 'true';
+    triggerBtn.onclick = () => {
+      runDeepAiAnalysis();
+    };
+  }
 
   const leaderboardBody = document.getElementById('aura-leaderboard-body');
   leaderboardBody.innerHTML = '';
 
-  const analyses = roomState.teamAnalyses || {};
+  const isAnalyzed = hasRunDeepAiAnalysis || roomState.status === 'COMPLETED';
+
+  // Compute authentic team analysis for all teams
   const teamList = Object.values(roomState.teams).map(t => {
-    const a = analyses[t.id] || {
-      auraPoints: 7500,
-      tier: 'A',
-      battingScore: 80,
-      bowlingScore: 80,
-      balanceScore: 80
+    const a = isAnalyzed ? computeAuthenticTeamAnalysis(t) : {
+      overallScore: 0,
+      battingScore: '--',
+      bowlingScore: '--',
+      balanceScore: '--',
+      tier: 'PENDING',
+      tierColor: '#38bdf8'
     };
-    // Calculate authentic 0-100 squad rating
-    const overallScore = Math.min(99, Math.max(50, Math.round(a.battingScore * 0.40 + a.bowlingScore * 0.40 + a.balanceScore * 0.20)));
-    return { ...t, analysis: { ...a, overallScore } };
+    return { ...t, analysis: a };
   });
 
-  // Sort by overall score out of 100
-  teamList.sort((a,b) => b.analysis.overallScore - a.analysis.overallScore);
-
-  // 1ST PLACE WINNER CARD POPULATION
-  const winner = teamList[0];
-  const winnerCard = document.getElementById('first-place-winner-card');
-  if (winner && winnerCard) {
-    winnerCard.style.display = 'block';
-    const logoEl = document.getElementById('champ-winner-logo');
-    if (logoEl) logoEl.src = getProxyOrDirectImageUrl(winner.logo);
-
-    const nameEl = document.getElementById('champ-winner-name');
-    if (nameEl) nameEl.textContent = `${winner.name} (${winner.shortName}) 👑 [${winner.ownerName || 'Manager'}]`;
-
-    const scorePill = document.getElementById('champ-score-pill');
-    if (scorePill) scorePill.textContent = `🏆 SCORE: ${winner.analysis.overallScore}/100 (${winner.analysis.tier} TIER)`;
-
-    const spentPill = document.getElementById('champ-spent-pill');
-    if (spentPill) spentPill.textContent = `💰 SPENT: ₹${(winner.totalSpent || 0).toFixed(1)} Cr`;
-
-    const squadPill = document.getElementById('champ-squad-count');
-    if (squadPill) squadPill.textContent = `👥 SQUAD: ${winner.squad.length}/11 PLAYERS`;
-
-    const reasonEl = document.getElementById('champ-winner-reason');
-    if (reasonEl) {
-      const topStars = winner.squad.slice(0, 3).map(p => p.name).join(', ');
-      const starsFragment = topStars ? ` anchored by match-winners ${topStars}` : '';
-      reasonEl.textContent = `${winner.name} finished #1 with a tactical squad rating of ${winner.analysis.overallScore}/100${starsFragment}! They fielded an elite batting lineup (${winner.analysis.battingScore}/100) alongside a high-impact bowling attack (${winner.analysis.bowlingScore}/100) and full squad depth within the ₹90 Cr budget.`;
-    }
-
-    if (!activeCritiqueTeamId) activeCritiqueTeamId = winner.id;
+  if (isAnalyzed) {
+    // Sort descending by authentic calculated score
+    teamList.sort((a,b) => b.analysis.overallScore - a.analysis.overallScore);
   }
 
+  // 1ST PLACE WINNER CARD (Visible ONLY after Deep AI Analysis is run)
+  const winner = teamList[0];
+  const winnerCard = document.getElementById('first-place-winner-card');
+  if (winnerCard) {
+    if (isAnalyzed && winner && winner.analysis.overallScore > 0) {
+      winnerCard.style.display = 'block';
+      const logoEl = document.getElementById('champ-winner-logo');
+      if (logoEl) logoEl.src = getProxyOrDirectImageUrl(winner.logo);
+
+      const nameEl = document.getElementById('champ-winner-name');
+      if (nameEl) nameEl.textContent = `${winner.name} (${winner.shortName}) 👑 [${winner.ownerName || 'Manager'}]`;
+
+      const scorePill = document.getElementById('champ-score-pill');
+      if (scorePill) scorePill.textContent = `🏆 SCORE: ${winner.analysis.overallScore}/100 (${winner.analysis.tier})`;
+
+      const spentPill = document.getElementById('champ-spent-pill');
+      if (spentPill) spentPill.textContent = `💰 SPENT: ₹${(winner.totalSpent || 0).toFixed(1)} Cr`;
+
+      const squadPill = document.getElementById('champ-squad-count');
+      if (squadPill) squadPill.textContent = `👥 SQUAD: ${winner.squad.length}/11 PLAYERS`;
+
+      const reasonEl = document.getElementById('champ-winner-reason');
+      if (reasonEl) {
+        const topStars = winner.squad.slice(0, 3).map(p => p.name).join(', ');
+        const starsFragment = topStars ? ` anchored by match-winners ${topStars}` : '';
+        reasonEl.textContent = `${winner.name} finished #1 with a tactical squad rating of ${winner.analysis.overallScore}/100${starsFragment}! They fielded an elite batting lineup (${winner.analysis.battingScore}/100) alongside a high-impact bowling attack (${winner.analysis.bowlingScore}/100) and complete squad depth within budget.`;
+      }
+
+      if (!activeCritiqueTeamId) activeCritiqueTeamId = winner.id;
+    } else {
+      winnerCard.style.display = 'none';
+    }
+  }
+
+  // Render Leaderboard Rows
   teamList.forEach((t, rank) => {
     const tr = document.createElement('tr');
     tr.style.cursor = 'pointer';
+
+    const scoreDisplay = isAnalyzed && t.analysis.overallScore > 0
+      ? `<strong style="color: #22c55e; font-size: 1.05rem;">${t.analysis.overallScore}/100</strong>`
+      : `<span style="color: #f59e0b; font-size: 0.85rem; font-weight: 700;">${t.squad.length}/11 Players</span>`;
+
+    const batDisplay = isAnalyzed ? t.analysis.battingScore : '<span style="color:#64748b;font-size:0.75rem;">Pending</span>';
+    const bowlDisplay = isAnalyzed ? t.analysis.bowlingScore : '<span style="color:#64748b;font-size:0.75rem;">Pending</span>';
+    const tierDisplay = isAnalyzed
+      ? `<span class="tier-badge" style="background: ${t.analysis.tierColor || '#f59e0b'}; color: #000;">${t.analysis.tier}</span>`
+      : `<span class="tier-badge" style="background: rgba(56,189,248,0.18); color: #38bdf8; border: 1px solid rgba(56,189,248,0.4);">READY</span>`;
+
     tr.innerHTML = `
       <td><strong>#${rank + 1}</strong></td>
       <td>
@@ -2119,10 +2269,10 @@ function renderAnalyzerView() {
           </div>
         </div>
       </td>
-      <td><strong style="color: #22c55e; font-size: 1.05rem;">${t.analysis.overallScore}/100</strong></td>
-      <td style="color: #38bdf8; font-weight: 700;">${t.analysis.battingScore}</td>
-      <td style="color: #ef4444; font-weight: 700;">${t.analysis.bowlingScore}</td>
-      <td><span class="tier-badge" style="background: ${t.analysis.tierColor || '#f59e0b'}; color: #000;">${t.analysis.tier}</span></td>
+      <td>${scoreDisplay}</td>
+      <td style="color: #38bdf8; font-weight: 700;">${batDisplay}</td>
+      <td style="color: #ef4444; font-weight: 700;">${bowlDisplay}</td>
+      <td>${tierDisplay}</td>
     `;
     tr.addEventListener('click', () => {
       activeCritiqueTeamId = t.id;
@@ -2149,7 +2299,48 @@ function renderAnalyzerView() {
     critiqueTabs.appendChild(btn);
   });
 
+  if (!activeCritiqueTeamId && teamList[0]) activeCritiqueTeamId = teamList[0].id;
   renderDetailedCritique(activeCritiqueTeamId);
+}
+
+// Engaging AI Analysis Simulation with Live Progress Steps
+function runDeepAiAnalysis() {
+  const triggerBtn = document.getElementById('btn-trigger-ai-analysis');
+  const progressBox = document.getElementById('ai-analyzing-progress-box');
+  const stepText = document.getElementById('ai-analyzing-step-text');
+  const progressBar = document.getElementById('ai-analyzing-progress-bar');
+
+  if (triggerBtn) {
+    triggerBtn.disabled = true;
+    triggerBtn.innerHTML = '🧠 ANALYZING SQUADS WITH AI...';
+  }
+  if (progressBox) progressBox.style.display = 'block';
+
+  const stages = [
+    { delay: 0, text: '🧠 Parsing 10 Franchise Rosters & Lineups...', pct: '25%' },
+    { delay: 450, text: '⚡ Evaluating T20 Strike Rates, Powerplay Hitters & Death Bowling...', pct: '55%' },
+    { delay: 900, text: '📊 Benchmarking All-Rounder Synergy & Overseas Limits against IPL Criteria...', pct: '85%' },
+    { delay: 1350, text: '🏆 Finalizing Authentic 0–100 Championship Ratings & Crown!', pct: '100%' }
+  ];
+
+  stages.forEach(s => {
+    setTimeout(() => {
+      if (stepText) stepText.textContent = s.text;
+      if (progressBar) progressBar.style.width = s.pct;
+    }, s.delay);
+  });
+
+  setTimeout(() => {
+    hasRunDeepAiAnalysis = true;
+    if (progressBox) progressBox.style.display = 'none';
+    if (triggerBtn) {
+      triggerBtn.disabled = false;
+      triggerBtn.innerHTML = '🔄 RE-RUN DEEP AI ANALYSIS';
+    }
+    if (window.audioEngine) window.audioEngine.playBidSound();
+    renderAnalyzerView();
+    showNotificationToast('🏆 Authentic AI Squad Analysis Complete! Champion Declared!', '#22c55e');
+  }, 1750);
 }
 
 function renderDetailedCritique(teamId) {
@@ -2157,20 +2348,25 @@ function renderDetailedCritique(teamId) {
   const team = roomState.teams[teamId];
   if (!team) return;
 
-  const rawAnalysis = (roomState.teamAnalyses && roomState.teamAnalyses[teamId]) || {
-    auraPoints: 8850,
-    tier: 'SSS',
-    tierLabel: 'ELITE CONTENDER',
-    battingScore: 92,
-    bowlingScore: 88,
-    balanceScore: 94
+  const isAnalyzed = hasRunDeepAiAnalysis || roomState.status === 'COMPLETED';
+  const analysis = isAnalyzed ? computeAuthenticTeamAnalysis(team) : {
+    overallScore: 0,
+    battingScore: '--',
+    bowlingScore: '--',
+    balanceScore: '--',
+    tier: 'READY',
+    tierColor: '#38bdf8',
+    steal: 'Tap "Run Deep AI Analysis" above',
+    overpay: 'Tap "Run Deep AI Analysis" above',
+    summary: `⚡ Tap 'RUN DEEP AI SQUAD ANALYSIS' above to generate authentic 0-100 tactical ratings for ${team.name}!`
   };
-  const overallRating = Math.min(99, Math.max(50, Math.round(rawAnalysis.battingScore * 0.40 + rawAnalysis.bowlingScore * 0.40 + rawAnalysis.balanceScore * 0.20)));
-  const analysis = { ...rawAnalysis, overallRating };
 
   document.getElementById('critique-team-name').textContent = `${team.name} (${team.shortName})`;
   document.getElementById('critique-team-logo').src = getProxyOrDirectImageUrl(team.logo);
-  document.getElementById('critique-aura-points').textContent = `Rating: ${overallRating}/100`;
+  document.getElementById('critique-aura-points').textContent = isAnalyzed && analysis.overallScore > 0
+    ? `Rating: ${analysis.overallScore}/100`
+    : `Squad: ${team.squad.length}/11`;
+
   const tierBadge = document.getElementById('critique-tier-badge');
   tierBadge.textContent = `${analysis.tier} TIER`;
   tierBadge.style.background = analysis.tierColor || '#f59e0b';
@@ -2181,26 +2377,14 @@ function renderDetailedCritique(teamId) {
 
   // Steal vs Overpay
   const stealEl = document.getElementById('critique-steal-text');
-  if (analysis.bestSteal) {
-    stealEl.innerHTML = `<strong>${analysis.bestSteal.player.name}</strong> at <strong>₹${analysis.bestSteal.price} Cr</strong> (Rating: ${analysis.bestSteal.rating}/100)`;
-  } else {
-    stealEl.textContent = 'Clean, disciplined purchases across the board.';
-  }
+  if (stealEl) stealEl.textContent = analysis.steal || 'Disciplined purchases.';
 
   const overpayEl = document.getElementById('critique-overpay-text');
-  if (analysis.worstOverpay && analysis.worstOverpay.price > 12) {
-    overpayEl.innerHTML = `<strong>${analysis.worstOverpay.player.name}</strong> at <strong>₹${analysis.worstOverpay.price} Cr</strong>`;
-  } else {
-    overpayEl.textContent = 'Zero overpays. Budget controlled masterfully.';
-  }
+  if (overpayEl) overpayEl.textContent = analysis.overpay || 'Budget controlled cleanly.';
 
-  // Crisp, clean AI Tactical Report (No commentator roleplay)
+  // Crisp, clean AI Tactical Report
   const summaryEl = document.getElementById('critique-tactical-summary');
-  if (summaryEl) {
-    const stars = team.squad.slice(0, 3).map(p => p.name).join(', ');
-    const starsPart = stars ? `Anchored by ${stars}, ` : '';
-    summaryEl.textContent = `${starsPart}${team.name} achieved an overall tactical rating of ${overallRating}/100. Their batting depth scored ${analysis.battingScore}/100 and bowling unit scored ${analysis.bowlingScore}/100 with ${analysis.balanceScore}/100 squad synergy across all 11 slots.`;
-  }
+  if (summaryEl) summaryEl.textContent = analysis.summary;
 
   // Categorized Tactical Squad Lineup: Batters -> Allrounders -> Bowlers
   const xiGrid = document.getElementById('critique-xi-grid');
