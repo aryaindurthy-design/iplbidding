@@ -65,7 +65,7 @@
     "country": "WI",
     "basePrice": 2,
     "set": "Marquee Set 1",
-    "image": "https://documents.iplt20.com/ipl/IPLHeadshot2025/177.png",
+    "image": "https://documents.iplt20.com/ipl/IPLHeadshot2023/177.png",
     "stats": {
       "matches": 127,
       "runs": 2484,
@@ -84,7 +84,7 @@
     "country": "IND",
     "basePrice": 2,
     "set": "Marquee Set 1",
-    "image": "https://documents.iplt20.com/ipl/IPLHeadshot2025/19.png",
+    "image": "https://documents.iplt20.com/ipl/IPLHeadshot2026/19.png",
     "stats": {
       "matches": 160,
       "runs": 5815,
@@ -852,7 +852,7 @@
     "country": "AUS",
     "basePrice": 2,
     "set": "Marquee Set 2",
-    "image": "https://documents.iplt20.com/ipl/IPLHeadshot2025/282.png",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/3/3d/Glen_Maxwell_2026_%28cropped%29.jpg",
     "stats": {
       "matches": 134,
       "runs": 2771,
@@ -1240,7 +1240,7 @@
     "country": "OS",
     "basePrice": 0.75,
     "set": "Set 2",
-    "image": "https://documents.iplt20.com/ipl/IPLHeadshot2026/743.png",
+    "image": "https://documents.iplt20.com/ipl/IPLHeadshot2025/743.png",
     "stats": {
       "matches": 26,
       "runs": 836,
@@ -2162,7 +2162,7 @@
     "country": "IND",
     "basePrice": 1,
     "set": "Set 2",
-    "image": "https://documents.iplt20.com/ipl/IPLHeadshot2025/224.png",
+    "image": "https://documents.iplt20.com/ipl/IPLHeadshot2026/224.png",
     "stats": {
       "matches": 74,
       "wickets": 73,
@@ -2316,7 +2316,7 @@
     "country": "IND",
     "basePrice": 0.5,
     "set": "Set 3",
-    "image": "https://documents.iplt20.com/ipl/IPLHeadshot2025/544.png",
+    "image": "https://documents.iplt20.com/ipl/IPLHeadshot2026/544.png",
     "stats": {
       "matches": 28,
       "wickets": 33,
@@ -2700,7 +2700,7 @@
     "country": "IND",
     "basePrice": 0.3,
     "set": "Set 4",
-    "image": "https://documents.iplt20.com/ipl/IPLHeadshot2026/3576.png",
+    "image": "https://documents.iplt20.com/ipl/IPLHeadshot2025/3576.png",
     "stats": {
       "matches": 24,
       "runs": 315,
@@ -3864,7 +3864,7 @@
     "country": "IND",
     "basePrice": 1,
     "set": "Set 2",
-    "image": "https://www.lucknowsupergiants.in/static-assets/waf-images/c8/4a/15/16-9/HPXdCAZZjc.JPG?v=1.11&w=1200",
+    "image": "https://img1.hscicdn.com/image/upload/f_auto,t_ds_w_1200,q_50/lsci/db/PICTURES/CMS/379000/379075.jpg",
     "stats": {
       "matches": 10,
       "wickets": 9,

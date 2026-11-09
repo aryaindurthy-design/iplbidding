@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="referrer" content="no-referrer">
-  <title>IPL Mega Auction Arena & Pro AI Squad Analyzer</title>
-  <link rel="stylesheet" href="style.css?v=2.5.0">
+  <title>IPL AUCTION</title>
+  <link rel="stylesheet" href="style.css?v=2.6.0">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -15,7 +15,7 @@
       document.write('<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"><\/script>');
     }
   </script>
-  <script src="audioEngine.js?v=2.5.0"></script>
+  <script src="audioEngine.js?v=2.6.0"></script>
 </head>
 <body>
   <!-- Canvas for Confetti -->
@@ -43,8 +43,9 @@
 
   <!-- TOP APP BAR -->
   <header class="top-nav">
-    <div class="brand-badge" id="nav-brand-logo-btn" style="cursor: pointer;" title="IPL Auction Home">
+    <div class="brand-badge" id="nav-brand-logo-btn" style="cursor: pointer;" title="IPL AUCTION">
       <img src="logo.png" alt="IPL AUCTION" class="brand-logo-img">
+      <span class="brand-title-text">IPL AUCTION</span>
     </div>
 
     <!-- Active Room Pill (Hidden in Lobby) -->
@@ -322,27 +323,7 @@
               <span style="font-size: 0.85rem; color: #f59e0b; font-weight: 800;">⭐ <span id="player-aura-rating">86</span>/100</span>
             </div>
 
-            <!-- Career Stats -->
-            <div class="stats-grid">
-              <div class="stat-box">
-                <div class="stat-value" id="stat-matches">-</div>
-                <div class="stat-label">Matches</div>
-              </div>
-              <div class="stat-box">
-                <div class="stat-value" id="stat-runs">-</div>
-                <div class="stat-label">Runs</div>
-              </div>
-              <div class="stat-box">
-                <div class="stat-value" id="stat-sr">-</div>
-                <div class="stat-label">Strike Rate</div>
-              </div>
-              <div class="stat-box">
-                <div class="stat-value" id="stat-wickets">-</div>
-                <div class="stat-label">Wickets / Econ</div>
-              </div>
-            </div>
-
-            <div style="font-size: 0.75rem; color: var(--text-muted); text-align: right;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">
               Player <span id="player-seq-num">1</span> of <span id="player-total-num">275</span>
             </div>
           </div>
@@ -381,24 +362,9 @@
             </div>
           </div>
 
-          <!-- Desktop Quick Increments & Paddle -->
-          <div class="desktop-only-bidding">
-            <div class="quick-inc-row">
-              <button class="inc-btn quick-inc-btn" data-inc="0.20">+20 Lakh</button>
-              <button class="inc-btn quick-inc-btn" data-inc="0.50">+50 Lakh</button>
-              <button class="inc-btn quick-inc-btn" data-inc="1.00">+1.00 Cr</button>
-              <button class="inc-btn quick-inc-btn" data-inc="2.00">+2.00 Cr</button>
-            </div>
-
-            <button id="btn-raise-bid" class="paddle-btn">
-              <span>🏏 RAISE PADDLE:</span>
-              <span id="btn-paddle-amount">₹2.00 Cr</span>
-            </button>
-          </div>
-
           <!-- Your Purse Strip -->
-          <div style="display: flex; justify-content: space-between; font-size: 0.85rem; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
-            <span>Purse: <strong id="my-purse-val" style="color: var(--accent-green);">₹100.00 Cr</strong></span>
+          <div style="display: flex; justify-content: space-between; font-size: 0.85rem; padding-top: 8px; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.08);">
+            <span>Purse: <strong id="my-purse-val" style="color: var(--accent-green);">₹90.00 Cr</strong></span>
             <span>Squad: <strong id="my-squad-count">0/11</strong></span>
             <span>Overseas: <strong id="my-overseas-count">0/4 ✈️</strong></span>
           </div>
@@ -435,23 +401,25 @@
 
     </div>
 
-    <!-- FIXED MOBILE BIDDING DOCK (Sticks to bottom of phone screen) -->
+    <!-- FIXED BIDDING DOCK (Stuck to bottom of screen) -->
     <div class="mobile-fixed-dock">
-      <div class="quick-inc-row">
-        <button class="inc-btn quick-inc-btn" data-inc="0.20">+20L</button>
-        <button class="inc-btn quick-inc-btn" data-inc="0.50">+50L</button>
-        <button class="inc-btn quick-inc-btn" data-inc="1.00">+1.0Cr</button>
-        <button class="inc-btn quick-inc-btn" data-inc="2.00">+2.0Cr</button>
-      </div>
+      <div class="dock-container">
+        <div class="quick-inc-row">
+          <button class="inc-btn quick-inc-btn" data-inc="0.20">+20L</button>
+          <button class="inc-btn quick-inc-btn" data-inc="0.50">+50L</button>
+          <button class="inc-btn quick-inc-btn" data-inc="1.00">+1.0Cr</button>
+          <button class="inc-btn quick-inc-btn" data-inc="2.00">+2.0Cr</button>
+        </div>
 
-      <button id="btn-raise-bid-mobile" class="paddle-btn">
-        <span>🏏 RAISE:</span>
-        <span id="btn-paddle-amount-mobile">₹2.00 Cr</span>
-      </button>
+        <button id="btn-raise-bid-mobile" class="paddle-btn">
+          <span>🏏 RAISE PADDLE:</span>
+          <span id="btn-paddle-amount-mobile">₹2.00 Cr</span>
+        </button>
 
-      <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-top: 6px; color: var(--text-muted);">
-        <span>Purse: <strong id="my-purse-val-mobile" style="color: var(--accent-green);">₹100.0 Cr</strong></span>
-        <span>Squad: <strong id="my-squad-count-mobile">0/11</strong> (✈️<span id="my-overseas-count-mobile">0/4</span>)</span>
+        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-top: 6px; color: var(--text-muted);">
+          <span>Purse: <strong id="my-purse-val-mobile" style="color: var(--accent-green);">₹90.0 Cr</strong></span>
+          <span>Squad: <strong id="my-squad-count-mobile">0/11</strong> (✈️<span id="my-overseas-count-mobile">0/4</span>)</span>
+        </div>
       </div>
     </div>
   </main>
@@ -680,6 +648,6 @@
     </div>
   </main>
 
-  <script src="app.js?v=2.5.0"></script>
+  <script src="app.js?v=2.6.0"></script>
 </body>
 </html>

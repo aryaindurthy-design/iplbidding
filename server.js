@@ -76,6 +76,7 @@ app.get('/api/proxy-image', async (req, res) => {
   const allowed = [
     'documents.iplt20.com',
     'upload.wikimedia.org',
+    'thumb.wikimedia.org',
     'static.iplt20.com',
     'images.unsplash.com',
     'img1.hscicdn.com',
@@ -84,10 +85,14 @@ app.get('/api/proxy-image', async (req, res) => {
     'api.dicebear.com',
     'documents.bcci.tv'
   ];
+  const DEFAULT_AVATAR_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="%2394a3b8"><circle cx="50" cy="35" r="24"/><path d="M18 90c0-18 14-32 32-32s32 14 32 32z"/></svg>';
+
   try {
     const parsed = new URL(targetUrl);
     if (!allowed.some(domain => parsed.hostname === domain || parsed.hostname.endsWith('.' + domain))) {
-      return res.status(403).send('Domain not allowed');
+      res.setHeader('Content-Type', 'image/svg+xml');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      return res.status(200).send(DEFAULT_AVATAR_SVG);
     }
 
     const headers = {
@@ -98,14 +103,17 @@ app.get('/api/proxy-image', async (req, res) => {
       headers['Referer'] = 'https://en.wikipedia.org/';
     }
 
-    let upstream = await fetch(targetUrl, { headers });
+    let upstream = null;
+    try {
+      upstream = await fetch(targetUrl, { headers });
+    } catch (e) {}
 
-    // If an IPL headshot returns 403 or 404, fallback through other years (2026, 2025, 2024, 2023)
-    if (!upstream.ok && targetUrl.includes('IPLHeadshot')) {
+    // If an IPL headshot returns 403 or 404, fallback through other years (2026, 2025, 2024, 2023, 2022)
+    if ((!upstream || !upstream.ok) && targetUrl.includes('IPLHeadshot')) {
       const yearMatch = targetUrl.match(/IPLHeadshot(\d{4})/);
       if (yearMatch) {
         const currentYear = yearMatch[1];
-        const altYears = ['2026', '2025', '2024', '2023'].filter(y => y !== currentYear);
+        const altYears = ['2026', '2025', '2024', '2023', '2022'].filter(y => y !== currentYear);
         for (const altYear of altYears) {
           const altUrl = targetUrl.replace(`IPLHeadshot${currentYear}`, `IPLHeadshot${altYear}`);
           try {
@@ -119,8 +127,10 @@ app.get('/api/proxy-image', async (req, res) => {
       }
     }
 
-    if (!upstream.ok) {
-      return res.status(upstream.status).send('Upstream error');
+    if (!upstream || !upstream.ok) {
+      res.setHeader('Content-Type', 'image/svg+xml');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      return res.status(200).send(DEFAULT_AVATAR_SVG);
     }
 
     const contentType = upstream.headers.get('content-type') || 'image/png';
@@ -131,7 +141,9 @@ app.get('/api/proxy-image', async (req, res) => {
     const buffer = Buffer.from(await upstream.arrayBuffer());
     res.send(buffer);
   } catch (err) {
-    res.status(500).send('Proxy error');
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.status(200).send(DEFAULT_AVATAR_SVG);
   }
 });
 

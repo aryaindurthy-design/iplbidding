@@ -909,10 +909,11 @@ function setupEventListeners() {
 
   document.getElementById('btn-leave-lobby').addEventListener('click', leaveAuctionRoom);
 
-  // Desktop Paddle Button
-  document.getElementById('btn-raise-bid').addEventListener('click', handleRaiseBid);
-  // Mobile Paddle Button
-  document.getElementById('btn-raise-bid-mobile').addEventListener('click', handleRaiseBid);
+  // Unified Paddle Buttons (Desktop & Fixed Dock)
+  const deskPaddle = document.getElementById('btn-raise-bid');
+  if (deskPaddle) deskPaddle.addEventListener('click', handleRaiseBid);
+  const mobPaddle = document.getElementById('btn-raise-bid-mobile');
+  if (mobPaddle) mobPaddle.addEventListener('click', handleRaiseBid);
 
   // Quick Increments
   document.querySelectorAll('.quick-inc-btn').forEach(btn => {
@@ -1386,13 +1387,29 @@ socket.on('playerSold', (data) => {
   teamTitle.textContent = (data.winningTeam.name || teamData.name || 'FRANCHISE').toUpperCase();
   teamTitle.style.color = teamColor;
 
-  // Resilient Player Photo - NEVER hardcode Virat Kohli!
+  // Resilient Player Photo - NEVER linger old player image or hardcode Virat Kohli!
   const defaultPlayerAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="%2394a3b8"><circle cx="50" cy="35" r="24"/><path d="M18 90c0-18 14-32 32-32s32 14 32 32z"/></svg>';
-  playerPhoto.onerror = function() {
-    this.onerror = null;
-    this.src = defaultPlayerAvatar;
-  };
-  playerPhoto.src = getProxyOrDirectImageUrl(data.player.image || data.player.photoUrl) || defaultPlayerAvatar;
+  if (playerPhoto) {
+    playerPhoto.src = defaultPlayerAvatar;
+    const soldPlayerKey = data.player.id || data.player.name;
+    playerPhoto.dataset.activePlayerId = soldPlayerKey;
+
+    const soldPhotoUrl = getProxyOrDirectImageUrl(data.player.image || data.player.photoUrl);
+    if (soldPhotoUrl) {
+      const soldLoader = new Image();
+      soldLoader.onload = function() {
+        if (playerPhoto.dataset.activePlayerId === soldPlayerKey) {
+          playerPhoto.src = soldPhotoUrl;
+        }
+      };
+      soldLoader.onerror = function() {
+        if (playerPhoto.dataset.activePlayerId === soldPlayerKey) {
+          playerPhoto.src = defaultPlayerAvatar;
+        }
+      };
+      soldLoader.src = soldPhotoUrl;
+    }
+  }
 
   playerName.textContent = data.player.name;
   playerRole.textContent = data.player.role || 'Player';
@@ -1454,11 +1471,27 @@ socket.on('playerUnsold', (data) => {
   teamTitle.style.color = '#ef4444';
 
   const defaultPlayerAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="%2394a3b8"><circle cx="50" cy="35" r="24"/><path d="M18 90c0-18 14-32 32-32s32 14 32 32z"/></svg>';
-  playerPhoto.onerror = function() {
-    this.onerror = null;
-    this.src = defaultPlayerAvatar;
-  };
-  playerPhoto.src = getProxyOrDirectImageUrl(data.player.image || data.player.photoUrl) || defaultPlayerAvatar;
+  if (playerPhoto) {
+    playerPhoto.src = defaultPlayerAvatar;
+    const unsoldPlayerKey = data.player.id || data.player.name;
+    playerPhoto.dataset.activePlayerId = unsoldPlayerKey;
+
+    const unsoldPhotoUrl = getProxyOrDirectImageUrl(data.player.image || data.player.photoUrl);
+    if (unsoldPhotoUrl) {
+      const unsoldLoader = new Image();
+      unsoldLoader.onload = function() {
+        if (playerPhoto.dataset.activePlayerId === unsoldPlayerKey) {
+          playerPhoto.src = unsoldPhotoUrl;
+        }
+      };
+      unsoldLoader.onerror = function() {
+        if (playerPhoto.dataset.activePlayerId === unsoldPlayerKey) {
+          playerPhoto.src = defaultPlayerAvatar;
+        }
+      };
+      unsoldLoader.src = unsoldPhotoUrl;
+    }
+  }
 
   playerName.textContent = data.player.name;
   playerRole.textContent = data.player.role || 'Player';
@@ -1525,22 +1558,29 @@ function renderPlayerSpotlight(player) {
   document.getElementById('player-seq-num').textContent = (roomState.currentPlayerIndex || 0) + 1;
   document.getElementById('player-total-num').textContent = roomState.totalPlayers || 275;
 
+  // Immediate reset to clean default silhouette so previous player's image NEVER lingers!
   const defaultSpotlightAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="%2394a3b8"><circle cx="50" cy="35" r="24"/><path d="M18 90c0-18 14-32 32-32s32 14 32 32z"/></svg>';
   const photo = document.getElementById('player-photo');
-  photo.onerror = function() {
-    this.onerror = null;
-    this.src = defaultSpotlightAvatar;
-  };
-  photo.src = getProxyOrDirectImageUrl(player.image) || defaultSpotlightAvatar;
+  if (photo) {
+    photo.src = defaultSpotlightAvatar;
+    const currentSpotlightKey = player.id || player.name;
+    photo.dataset.activePlayerId = currentSpotlightKey;
 
-  document.getElementById('stat-matches').textContent = (player.stats && player.stats.matches) || '-';
-  document.getElementById('stat-runs').textContent = (player.stats && player.stats.runs) || '0';
-  document.getElementById('stat-sr').textContent = (player.stats && player.stats.sr) ? player.stats.sr.toFixed(1) : '-';
-  
-  if (player.role === 'Bowler' || (player.stats && player.stats.wickets > 0)) {
-    document.getElementById('stat-wickets').textContent = `${player.stats.wickets || 0}w (${player.stats.econ || '-'}e)`;
-  } else {
-    document.getElementById('stat-wickets').textContent = `HS: ${(player.stats && player.stats.hs) || '-'}`;
+    const targetUrl = getProxyOrDirectImageUrl(player.image);
+    if (targetUrl) {
+      const loader = new Image();
+      loader.onload = function() {
+        if (photo.dataset.activePlayerId === currentSpotlightKey) {
+          photo.src = targetUrl;
+        }
+      };
+      loader.onerror = function() {
+        if (photo.dataset.activePlayerId === currentSpotlightKey) {
+          photo.src = defaultSpotlightAvatar;
+        }
+      };
+      loader.src = targetUrl;
+    }
   }
 }
 
@@ -1551,9 +1591,11 @@ function updateBiddingPanel(state) {
   document.getElementById('current-bid-val').textContent = currentBidStr;
   document.getElementById('next-bid-val').textContent = nextBidStr;
 
-  // Desktop & Mobile Paddle Amounts
-  document.getElementById('btn-paddle-amount').textContent = nextBidStr;
-  document.getElementById('btn-paddle-amount-mobile').textContent = nextBidStr;
+  // Paddle Amounts
+  const deskPaddleAmount = document.getElementById('btn-paddle-amount');
+  if (deskPaddleAmount) deskPaddleAmount.textContent = nextBidStr;
+  const mobPaddleAmount = document.getElementById('btn-paddle-amount-mobile');
+  if (mobPaddleAmount) mobPaddleAmount.textContent = nextBidStr;
 
   // Leading Bidder Badge with Official Logo
   const leadingName = document.getElementById('leading-team-name');
