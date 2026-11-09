@@ -1,0 +1,7 @@
+cloudflared.exe
+*.log
+node_modules
+.git
+test_*.js
+*.png
+

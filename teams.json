@@ -1,0 +1,223 @@
+[
+  {
+    "id": "CSK",
+    "name": "Chennai Super Kings",
+    "shortName": "CSK",
+    "city": "Chennai",
+    "primaryColor": "#FDB913",
+    "secondaryColor": "#0081E9",
+    "textColor": "#000000",
+    "gradient": "linear-gradient(135deg, #FDB913 0%, #E59F00 100%)",
+    "slogan": "Whistle Podu! 🦁",
+    "songTitle": "Anirudh - Leo Badass BGM",
+    "reelBgm": "Anirudh Ravichander: Leo Badass BGM (Viral Mass Drop)",
+    "audioFile": "/audio/csk.m4a",
+    "badgeEmoji": "🦁",
+    "logo": "https://documents.iplt20.com/ipl/CSK/logos/Logooutline/CSKoutline.png",
+    "botProfile": {
+      "favoredRoles": ["All-Rounder", "Bowler", "Wicket-Keeper"],
+      "aggression": 0.7,
+      "maxBidShare": 0.25,
+      "preferredTypes": ["Indian"]
+    }
+  },
+  {
+    "id": "MI",
+    "name": "Mumbai Indians",
+    "shortName": "MI",
+    "city": "Mumbai",
+    "primaryColor": "#004BA0",
+    "secondaryColor": "#D1AB3E",
+    "textColor": "#FFFFFF",
+    "gradient": "linear-gradient(135deg, #004BA0 0%, #002244 100%)",
+    "slogan": "Duniya Hila Denge Hum! ⚡",
+    "songTitle": "Anirudh - Vikram Rolex BGM",
+    "reelBgm": "Anirudh: Vikram Rolex Sir BGM (Viral Drop)",
+    "audioFile": "/audio/mi.m4a",
+    "badgeEmoji": "⚡",
+    "logo": "https://documents.iplt20.com/ipl/MI/Logos/Logooutline/MIoutline.png",
+    "botProfile": {
+      "favoredRoles": ["Bowler", "Batsman", "All-Rounder"],
+      "aggression": 0.85,
+      "maxBidShare": 0.32,
+      "preferredTypes": ["Indian", "Overseas"]
+    }
+  },
+  {
+    "id": "RCB",
+    "name": "Royal Challengers Bengaluru",
+    "shortName": "RCB",
+    "city": "Bengaluru",
+    "primaryColor": "#EC1C24",
+    "secondaryColor": "#2B2A29",
+    "textColor": "#FFFFFF",
+    "gradient": "linear-gradient(135deg, #EC1C24 0%, #151515 100%)",
+    "slogan": "Play Bold! E Sala Cup Namde! 👑",
+    "songTitle": "Requested Instagram Reel (C6MZ1w0vJ9X)",
+    "reelBgm": "Instagram Reel Audio 26567971649499740 (C6MZ1w0vJ9X)",
+    "reelUrl": "https://www.instagram.com/reel/C6MZ1w0vJ9X/",
+    "audioFile": "/audio/rcb.m4a",
+    "badgeEmoji": "👑",
+    "logo": "https://documents.iplt20.com/ipl/RCB/Logos/Logooutline/RCBoutline.png",
+    "botProfile": {
+      "favoredRoles": ["Batsman", "Wicket-Keeper", "All-Rounder"],
+      "aggression": 0.9,
+      "maxBidShare": 0.35,
+      "preferredTypes": ["Indian", "Overseas"]
+    }
+  },
+  {
+    "id": "KKR",
+    "name": "Kolkata Knight Riders",
+    "shortName": "KKR",
+    "city": "Kolkata",
+    "primaryColor": "#3A225D",
+    "secondaryColor": "#F7D54E",
+    "textColor": "#FFFFFF",
+    "gradient": "linear-gradient(135deg, #3A225D 0%, #1F0F35 100%)",
+    "slogan": "Korbo Lorbo Jeetbo Re! 💜",
+    "songTitle": "Anirudh - Jailer Hukum BGM",
+    "reelBgm": "Anirudh: Jailer Hukum Tiger Ka Hukam BGM",
+    "audioFile": "/audio/kkr.m4a",
+    "badgeEmoji": "💜",
+    "logo": "https://documents.iplt20.com/ipl/KKR/Logos/Logooutline/KKRoutline.png",
+    "botProfile": {
+      "favoredRoles": ["All-Rounder", "Bowler", "Batsman"],
+      "aggression": 0.75,
+      "maxBidShare": 0.28,
+      "preferredTypes": ["Overseas", "Indian"]
+    }
+  },
+  {
+    "id": "SRH",
+    "name": "Sunrisers Hyderabad",
+    "shortName": "SRH",
+    "city": "Hyderabad",
+    "primaryColor": "#F26522",
+    "secondaryColor": "#111111",
+    "textColor": "#FFFFFF",
+    "gradient": "linear-gradient(135deg, #F26522 0%, #7A2600 100%)",
+    "slogan": "Orange Army Ready to Roar! 🦅",
+    "songTitle": "They Call Him OG - Geetha Rescue & Hungry Cheetah Drops (Thaman S)",
+    "reelBgm": "Thaman S: OG Geetha Rescue & Hungry Cheetah (Peak Drops)",
+    "audioFile": "/audio/og_geetha.m4a",
+    "badgeEmoji": "🦅",
+    "logo": "https://documents.iplt20.com/ipl/SRH/Logos/Logooutline/SRHoutline.png",
+    "botProfile": {
+      "favoredRoles": ["Batsman", "Bowler", "Wicket-Keeper"],
+      "aggression": 0.8,
+      "maxBidShare": 0.3,
+      "preferredTypes": ["Overseas", "Indian"]
+    }
+  },
+  {
+    "id": "RR",
+    "name": "Rajasthan Royals",
+    "shortName": "RR",
+    "city": "Jaipur",
+    "primaryColor": "#EA1A85",
+    "secondaryColor": "#254AA5",
+    "textColor": "#FFFFFF",
+    "gradient": "linear-gradient(135deg, #EA1A85 0%, #254AA5 100%)",
+    "slogan": "Halla Bol! ⚔️",
+    "songTitle": "Sai Abhyankkar - Katchi Sera Viral BGM",
+    "reelBgm": "Sai Abhyankkar: Katchi Sera (Viral Instagram Reel Track)",
+    "audioFile": "/audio/rr.m4a",
+    "badgeEmoji": "⚔️",
+    "logo": "https://documents.iplt20.com/ipl/RR/Logos/Logooutline/RRoutline.png",
+    "botProfile": {
+      "favoredRoles": ["Batsman", "Bowler", "Wicket-Keeper"],
+      "aggression": 0.7,
+      "maxBidShare": 0.26,
+      "preferredTypes": ["Indian", "Overseas"]
+    }
+  },
+  {
+    "id": "DC",
+    "name": "Delhi Capitals",
+    "shortName": "DC",
+    "city": "Delhi",
+    "primaryColor": "#0078BC",
+    "secondaryColor": "#D71920",
+    "textColor": "#FFFFFF",
+    "gradient": "linear-gradient(135deg, #0078BC 0%, #D71920 100%)",
+    "slogan": "Roar Macha! 🐯",
+    "songTitle": "Anirudh - Master JD Entry BGM",
+    "reelBgm": "Anirudh: Master JD Entry / Vaathi Raid BGM",
+    "audioFile": "/audio/dc.m4a",
+    "badgeEmoji": "🐯",
+    "logo": "https://documents.iplt20.com/ipl/DC/Logos/LogoOutline/DCoutline.png",
+    "botProfile": {
+      "favoredRoles": ["Bowler", "Batsman", "All-Rounder"],
+      "aggression": 0.75,
+      "maxBidShare": 0.28,
+      "preferredTypes": ["Indian"]
+    }
+  },
+  {
+    "id": "PBKS",
+    "name": "Punjab Kings",
+    "shortName": "PBKS",
+    "city": "Mohali",
+    "primaryColor": "#DD1F2D",
+    "secondaryColor": "#A7A9AC",
+    "textColor": "#FFFFFF",
+    "gradient": "linear-gradient(135deg, #DD1F2D 0%, #75000A 100%)",
+    "slogan": "Sadda Punjab! Dhum Punjabi! 🥁",
+    "songTitle": "Shubh - Cheques Viral Reel BGM",
+    "reelBgm": "Shubh: Cheques (Viral Punjabi Drill BGM)",
+    "audioFile": "/audio/pbks.m4a",
+    "badgeEmoji": "🥁",
+    "logo": "https://documents.iplt20.com/ipl/PBKS/Logos/Logooutline/PBKSoutline.png",
+    "botProfile": {
+      "favoredRoles": ["Batsman", "All-Rounder", "Bowler"],
+      "aggression": 0.95,
+      "maxBidShare": 0.38,
+      "preferredTypes": ["Overseas", "Indian"]
+    }
+  },
+  {
+    "id": "LSG",
+    "name": "Lucknow Super Giants",
+    "shortName": "LSG",
+    "city": "Lucknow",
+    "primaryColor": "#0057E7",
+    "secondaryColor": "#FF7F00",
+    "textColor": "#FFFFFF",
+    "gradient": "linear-gradient(135deg, #0057E7 0%, #001F5B 100%)",
+    "slogan": "Gazab Andaz! Ab Apni Baari Hai! 🏹",
+    "songTitle": "Ravi Basrur - Salaar Monster BGM",
+    "reelBgm": "Ravi Basrur: Salaar Ceasefire Mass BGM",
+    "audioFile": "/audio/lsg.m4a",
+    "badgeEmoji": "🏹",
+    "logo": "https://documents.iplt20.com/ipl/LSG/Logos/Logooutline/LSGoutline.png",
+    "botProfile": {
+      "favoredRoles": ["All-Rounder", "Bowler", "Wicket-Keeper"],
+      "aggression": 0.72,
+      "maxBidShare": 0.26,
+      "preferredTypes": ["Indian", "Overseas"]
+    }
+  },
+  {
+    "id": "GT",
+    "name": "Gujarat Titans",
+    "shortName": "GT",
+    "city": "Ahmedabad",
+    "primaryColor": "#1B2133",
+    "secondaryColor": "#CCA63D",
+    "textColor": "#FFFFFF",
+    "gradient": "linear-gradient(135deg, #1B2133 0%, #0A0D15 100%)",
+    "slogan": "Aava De! Garjega Gujarat! ⚡",
+    "songTitle": "Sai Abhyankkar - Aasa Kooda Viral BGM",
+    "reelBgm": "Sai Abhyankkar: Aasa Kooda (Viral Instagram Reel Track)",
+    "audioFile": "/audio/gt.m4a",
+    "badgeEmoji": "🛡️",
+    "logo": "https://documents.iplt20.com/ipl/GT/Logos/Logooutline/GToutline.png",
+    "botProfile": {
+      "favoredRoles": ["All-Rounder", "Bowler", "Batsman"],
+      "aggression": 0.76,
+      "maxBidShare": 0.27,
+      "preferredTypes": ["Indian", "Overseas"]
+    }
+  }
+]

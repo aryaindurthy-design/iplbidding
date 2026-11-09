@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <title>IPL Mega Auction Arena & Pro AI Squad Analyzer</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="socket-client.js"></script>
+  <script>
+    if (typeof io === 'undefined') {
+      document.write('<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"><\/script>');
+    }
+  </script>
+  <script src="audioEngine.js"></script>
+</head>
+<body>
+  <!-- Canvas for Confetti -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <!-- TOP APP BAR -->
+  <header class="top-nav">
+    <div class="brand-badge">
+      <span class="trophy">🏆</span>
+      <div>IPL <span>AUCTION</span></div>
+    </div>
+
+    <!-- Active Room Pill (Hidden in Lobby) -->
+    <div id="nav-room-meta" style="display: none; align-items: center; gap: 8px;">
+      <div id="btn-copy-code-pill" class="glass-pill" style="padding: 5px 12px; font-weight: 800; color: #f59e0b; font-size: 0.85rem; cursor: pointer;" title="Tap to copy room code">
+        🔑 <span id="nav-room-code">------</span>
+      </div>
+      <div id="nav-my-team-pill" class="glass-pill" style="padding: 4px 10px; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; cursor: pointer;" title="Tap to switch your franchise anytime!">
+        <img id="nav-my-team-logo" src="" style="width: 20px; height: 20px; object-fit: contain;">
+        <span id="nav-my-team-name">TEAM</span>
+        <span style="font-size: 0.65rem; background: rgba(255,255,255,0.18); padding: 2px 6px; border-radius: 4px; color: #f59e0b;">Change 🔄</span>
+      </div>
+    </div>
+
+    <!-- Sound & Voice Controls -->
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <div id="connection-status-pill" class="glass-pill" style="padding: 4px 8px; font-size: 0.72rem; color: #22c55e; font-weight: 800;">🟢 Online</div>
+      <button id="btn-toggle-audio" class="glass-pill" style="padding: 6px 10px; color: #fff; font-size: 0.8rem; border: none; cursor: pointer;">🔊 ON</button>
+      
+      <!-- Host Quick Actions Menu -->
+      <div id="host-controls" style="display: none; align-items: center; gap: 6px;">
+        <button id="btn-host-pause" class="glass-pill" style="padding: 6px 10px; color: #38bdf8; font-size: 0.75rem; border: none; cursor: pointer;">⏸️ Pause</button>
+        <button id="btn-host-skip" class="glass-pill" style="padding: 6px 10px; color: #f59e0b; font-size: 0.75rem; border: none; cursor: pointer;">⏭️ Skip</button>
+        <button id="btn-host-end" class="glass-pill" style="padding: 6px 10px; color: #ef4444; font-size: 0.75rem; border: none; cursor: pointer;">🛑 Judge</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MOBILE SEGMENTED NAVIGATION TABS (Shown when in active room) -->
+  <nav id="mobile-segmented-bar" class="mobile-nav-tabs" style="display: none;">
+    <button class="mobile-nav-tab active" data-tab="arena">🔨 Auction</button>
+    <button class="mobile-nav-tab" data-tab="franchises">📊 Franchises</button>
+    <button class="mobile-nav-tab" data-tab="chat">💬 Banter</button>
+    <button class="mobile-nav-tab" data-tab="analyzer">🧠 AI Judge</button>
+  </nav>
+
+  <!-- ================= VIEW 1: LOBBY (HOST / JOIN) ================= -->
+  <main id="view-lobby" class="view-screen active">
+    <div class="lobby-container">
+      <div class="lobby-hero">
+        <h1>IPL MEGA AUCTION ARENA</h1>
+        <p>Real-time live bidding with your friends, official team logos, viral Instagram reel anthems on every hammer drop, and the Pro AI Squad Judge!</p>
+      </div>
+
+      <!-- Quick Solo Play Button (uses whichever franchise you select) -->
+      <div style="text-align: center; margin-bottom: 20px;">
+        <button id="btn-quick-play" class="btn btn-secondary" style="font-size: 1rem; width: 100%; max-width: 460px; padding: 12px; border: 1px solid rgba(245,158,11,0.4); box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+          🤖 Play Solo as <span id="quick-play-team-label" style="color: #f59e0b; font-weight: 900;">Royal Challengers Bengaluru</span> vs 9 AI Bots
+        </button>
+      </div>
+
+      <div class="lobby-grid">
+        <!-- Host Room Card -->
+        <div class="glass" style="padding: 20px;">
+          <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 8px;">👑 Host a Room for Friends</h2>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">
+            Pick your franchise and share the 5-letter code with friends on their phones!
+          </p>
+
+          <div class="input-group">
+            <label class="input-label">Manager Name</label>
+            <input type="text" id="host-name-input" class="text-input" placeholder="Your name" value="Boss Manager">
+          </div>
+
+          <div class="input-group">
+            <label class="input-label" style="display: flex; justify-content: space-between; align-items: center;">
+              <span>Pick Your Franchise:</span>
+              <span style="font-size: 0.75rem; color: #f59e0b; font-weight: 700;">Tap tile or dropdown</span>
+            </label>
+            <select id="host-team-select" class="text-input" style="padding: 10px 12px; margin-bottom: 10px; font-weight: 800; font-size: 0.95rem; background: #0f172a; border: 1px solid #f59e0b;">
+              <option value="RCB" selected>👑 Royal Challengers Bengaluru (RCB)</option>
+              <option value="CSK">🦁 Chennai Super Kings (CSK)</option>
+              <option value="MI">⚡ Mumbai Indians (MI)</option>
+              <option value="SRH">🦅 Sunrisers Hyderabad (SRH)</option>
+              <option value="KKR">💜 Kolkata Knight Riders (KKR)</option>
+              <option value="RR">⚔️ Rajasthan Royals (RR)</option>
+              <option value="DC">🐯 Delhi Capitals (DC)</option>
+              <option value="PBKS">🥁 Punjab Kings (PBKS)</option>
+              <option value="LSG">🏹 Lucknow Super Giants (LSG)</option>
+              <option value="GT">🛡️ Gujarat Titans (GT)</option>
+            </select>
+            <div id="host-teams-picker" class="teams-picker"></div>
+            <div id="host-selected-badge" class="selected-team-badge">Selected: 👑 Royal Challengers Bengaluru</div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+            <div>
+              <label class="input-label">Purse</label>
+              <select id="setting-purse" class="text-input" style="padding: 10px;">
+                <option value="90" selected>₹90 Cr (Standard)</option>
+                <option value="100">₹100 Cr</option>
+                <option value="120">₹120 Cr</option>
+                <option value="80">₹80 Cr</option>
+              </select>
+            </div>
+            <div>
+              <label class="input-label">Timer</label>
+              <select id="setting-timer" class="text-input" style="padding: 10px;">
+                <option value="10">10s (Fast)</option>
+                <option value="12" selected>12s (Standard)</option>
+                <option value="15">15s</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="input-group" style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25); padding: 10px 12px; border-radius: 12px; margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <input type="checkbox" id="setting-bots" style="width: 18px; height: 18px; cursor: pointer;">
+              <label for="setting-bots" style="font-size: 0.82rem; font-weight: 700; cursor: pointer; color: #fff;">
+                🤖 Enable AI Bots for unpicked franchises
+              </label>
+            </div>
+            <div style="font-size: 0.72rem; color: #a7f3d0; margin-top: 4px; padding-left: 26px;">
+              🔒 <strong>Default: 100% Private Room</strong> — Only friends who enter your code can join and bid. AI bots are OFF so nobody disturbs you!
+            </div>
+          </div>
+
+          <button id="btn-create-room" class="btn btn-primary btn-block">
+            Create Private Room & Get Code 🚀
+          </button>
+        </div>
+
+        <!-- Join Room Card -->
+        <div class="glass" style="padding: 20px;">
+          <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 8px;">🎟️ Join Friend's Room</h2>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 14px;">
+            Enter the 5-letter code from your friend to join the live auction!
+          </p>
+
+          <div class="input-group">
+            <label class="input-label">Room Code</label>
+            <input type="text" id="join-code-input" class="text-input" placeholder="e.g. AURA9" style="text-transform: uppercase; font-weight: 900; font-size: 1.3rem; letter-spacing: 2px;">
+          </div>
+
+          <div id="join-room-status-box" style="display: none; padding: 10px 12px; border-radius: 10px; font-size: 0.8rem; margin-bottom: 14px; font-weight: 700;"></div>
+
+          <div class="input-group">
+            <label class="input-label">Your Manager Name</label>
+            <input type="text" id="join-name-input" class="text-input" placeholder="Your name" value="Cricket Master">
+          </div>
+
+          <div class="input-group">
+            <label class="input-label" style="display: flex; justify-content: space-between; align-items: center;">
+              <span>Pick From Available Franchises:</span>
+              <span id="join-picker-hint" style="font-size: 0.75rem; color: #22c55e; font-weight: 700;">Select an open team</span>
+            </label>
+            <select id="join-team-select" class="text-input" style="padding: 10px 12px; margin-bottom: 10px; font-weight: 800; font-size: 0.95rem; background: #0f172a; border: 1px solid #38bdf8;">
+              <option value="CSK" selected>🦁 Chennai Super Kings (CSK)</option>
+              <option value="MI">⚡ Mumbai Indians (MI)</option>
+              <option value="RCB">👑 Royal Challengers Bengaluru (RCB)</option>
+              <option value="SRH">🦅 Sunrisers Hyderabad (SRH)</option>
+              <option value="KKR">💜 Kolkata Knight Riders (KKR)</option>
+              <option value="RR">⚔️ Rajasthan Royals (RR)</option>
+              <option value="DC">🐯 Delhi Capitals (DC)</option>
+              <option value="PBKS">🥁 Punjab Kings (PBKS)</option>
+              <option value="LSG">🏹 Lucknow Super Giants (LSG)</option>
+              <option value="GT">🛡️ Gujarat Titans (GT)</option>
+            </select>
+            <div id="join-teams-picker" class="teams-picker"></div>
+            <div id="join-selected-badge" class="selected-team-badge">Selected: 🦁 Chennai Super Kings</div>
+          </div>
+
+          <button id="btn-join-room" class="btn btn-secondary btn-block">
+            Enter Auction Room 🚪
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ================= MODAL: WAITING LOBBY ================= -->
+  <div id="modal-waiting-lobby" style="position: fixed; inset: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); z-index: 200; display: none; align-items: center; justify-content: center; padding: 16px; opacity: 1;">
+    <div class="glass" style="max-width: 500px; width: 100%; padding: 24px; text-align: center; border: 2px solid rgba(245,158,11,0.5); box-shadow: 0 15px 45px rgba(0,0,0,0.85); opacity: 1;">
+      <h2 style="font-size: 1.6rem; font-weight: 900; margin-bottom: 4px;">AUCTION ROOM LOBBY</h2>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 14px;">Share this code with your friends to join:</p>
+      
+      <!-- Big Room Code & 1-Tap Share Buttons -->
+      <div style="background: rgba(0,0,0,0.5); padding: 14px 18px; border-radius: 16px; border: 1px solid rgba(245,158,11,0.3); margin-bottom: 14px;">
+        <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 800; letter-spacing: 1px;">YOUR 5-LETTER ROOM CODE</div>
+        <div id="lobby-code-display" style="font-size: 2.8rem; font-weight: 900; letter-spacing: 5px; color: #f59e0b; margin: 4px 0 10px; line-height: 1;">------</div>
+        <div style="display: flex; gap: 8px;">
+          <button id="btn-copy-room-link" class="btn btn-secondary" style="flex: 1; padding: 10px; font-size: 0.85rem; font-weight: 800;">
+            📋 Copy Invite Link
+          </button>
+          <a id="btn-whatsapp-share" class="btn btn-success" target="_blank" style="flex: 1; padding: 10px; font-size: 0.85rem; font-weight: 800; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+            📲 Share on WhatsApp
+          </a>
+        </div>
+      </div>
+
+      <div style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 16px; word-break: break-all;">
+        Direct Link: <strong id="lobby-ip-display" style="color: #38bdf8;">https://iplbidding.vercel.app/?room=...</strong>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <h3 style="font-size: 0.95rem; font-weight: 800; margin: 0; text-align: left;">Franchises Claimed (<span id="lobby-member-count">1</span>/10):</h3>
+        <button id="btn-lobby-switch-team" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem; font-weight: 800;">
+          🔄 Switch My Team
+        </button>
+      </div>
+      <div id="lobby-members-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; max-height: 190px; overflow-y: auto;"></div>
+
+      <div id="lobby-waiting-notice" style="display: none; background: rgba(56,189,248,0.12); border: 1px solid rgba(56,189,248,0.4); padding: 12px; border-radius: 12px; color: #38bdf8; font-weight: 800; font-size: 0.88rem; margin-bottom: 14px;">
+        ⏳ Waiting for Room Host to start the auction... (Get ready!)
+      </div>
+
+      <div style="display: flex; gap: 10px;">
+        <button id="btn-start-auction-now" class="btn btn-primary" style="flex: 2; font-size: 1.1rem; font-weight: 900;">
+          START AUCTION 🔨
+        </button>
+        <button id="btn-leave-lobby" class="btn btn-secondary" style="flex: 1;">Leave</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: LIVE FRANCHISE SWITCH ================= -->
+  <div id="modal-switch-team" style="position: fixed; inset: 0; background: rgba(0,0,0,0.88); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 350; display: none; align-items: center; justify-content: center; padding: 16px;">
+    <div class="glass" style="max-width: 480px; width: 100%; padding: 22px; text-align: center; border: 2px solid rgba(245,158,11,0.4); box-shadow: 0 15px 45px rgba(0,0,0,0.85);">
+      <h2 style="font-size: 1.4rem; font-weight: 900; margin-bottom: 4px; color: #fff;">CHOOSE YOUR FRANCHISE</h2>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 14px;">Tap any available team to switch to it right now:</p>
+      
+      <div id="switch-team-grid" class="teams-picker" style="margin-bottom: 16px;"></div>
+
+      <button id="btn-close-switch-modal" class="btn btn-secondary btn-block" style="padding: 10px; font-size: 0.9rem;">
+        Close / Keep Current Team
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= VIEW 2: LIVE AUCTION ARENA ================= -->
+  <main id="view-arena" class="view-screen">
+    <div class="arena-layout">
+      
+      <!-- DESKTOP LEFT SIDEBAR: FRANCHISES & PURSES -->
+      <aside class="desktop-sidebar">
+        <div class="glass" style="padding: 16px;">
+          <h3 style="font-size: 0.85rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px;">
+            Franchises & Purses
+          </h3>
+          <div id="arena-teams-list-desktop"></div>
+        </div>
+      </aside>
+
+      <!-- CENTER STAGE: SPOTLIGHT PLAYER & BIDDING -->
+      <section class="center-stage">
+        
+        <!-- PLAYER SPOTLIGHT CARD -->
+        <div class="player-card" id="player-card">
+          <div class="player-photo-wrapper">
+            <span class="player-role-badge" id="player-role-badge">Batsman</span>
+            <span class="player-type-badge" id="player-type-badge">IND 🇮🇳</span>
+            <img id="player-photo" class="player-photo" src="" alt="Player Headshot" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\' fill=\'%2394a3b8\'><circle cx=\'50\' cy=\'35\' r=\'24\'/><path d=\'M18 90c0-18 14-32 32-32s32 14 32 32z\'/></svg>';">
+          </div>
+
+          <div>
+            <div class="player-set-tag" id="player-set-tag">Marquee Set 1</div>
+            <h2 class="player-name" id="player-name">Player Spotlight</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+              <span style="font-size: 0.95rem; color: #cbd5e1;">Base Price: <strong id="player-base-price" style="color: #22c55e;">₹2.00 Cr</strong></span>
+              <span style="font-size: 0.85rem; color: #f59e0b; font-weight: 800;">⭐ <span id="player-aura-rating">86</span>/100</span>
+            </div>
+
+            <!-- Career Stats -->
+            <div class="stats-grid">
+              <div class="stat-box">
+                <div class="stat-value" id="stat-matches">-</div>
+                <div class="stat-label">Matches</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-value" id="stat-runs">-</div>
+                <div class="stat-label">Runs</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-value" id="stat-sr">-</div>
+                <div class="stat-label">Strike Rate</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-value" id="stat-wickets">-</div>
+                <div class="stat-label">Wickets / Econ</div>
+              </div>
+            </div>
+
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-align: right;">
+              Player <span id="player-seq-num">1</span> of <span id="player-total-num">275</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- LIVE BIDDING PANEL (DESKTOP & TABLET VIEW) -->
+        <div class="bidding-panel">
+          <div class="timer-strip">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div id="auction-timer-circle" class="timer-circle">12</div>
+              <div>
+                <div id="hammer-status" style="font-weight: 800; font-size: 0.9rem; text-transform: uppercase;">LIVE BIDDING</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">Synchronized Auction Hammer</div>
+              </div>
+            </div>
+
+            <!-- Leading Bidder Badge with Logo -->
+            <div id="leading-team-container" class="leading-team-card">
+              <img id="leading-team-logo" class="leading-team-logo-img" src="">
+              <div>
+                <div style="font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Leading Bidder</div>
+                <div id="leading-team-name" style="font-weight: 800; font-size: 0.95rem;">No bids yet</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Current Bid Display -->
+          <div class="current-bid-box">
+            <div>
+              <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Highest Bid</div>
+              <div id="current-bid-val" class="current-bid-num">₹0.00 Cr</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Next Min Bid</div>
+              <div id="next-bid-val" style="font-size: 1.6rem; font-weight: 800; color: var(--accent-green);">₹2.00 Cr</div>
+            </div>
+          </div>
+
+          <!-- Desktop Quick Increments & Paddle -->
+          <div class="desktop-only-bidding">
+            <div class="quick-inc-row">
+              <button class="inc-btn quick-inc-btn" data-inc="0.20">+20 Lakh</button>
+              <button class="inc-btn quick-inc-btn" data-inc="0.50">+50 Lakh</button>
+              <button class="inc-btn quick-inc-btn" data-inc="1.00">+1.00 Cr</button>
+              <button class="inc-btn quick-inc-btn" data-inc="2.00">+2.00 Cr</button>
+            </div>
+
+            <button id="btn-raise-bid" class="paddle-btn">
+              <span>🏏 RAISE PADDLE:</span>
+              <span id="btn-paddle-amount">₹2.00 Cr</span>
+            </button>
+          </div>
+
+          <!-- Your Purse Strip -->
+          <div style="display: flex; justify-content: space-between; font-size: 0.85rem; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
+            <span>Purse: <strong id="my-purse-val" style="color: var(--accent-green);">₹100.00 Cr</strong></span>
+            <span>Squad: <strong id="my-squad-count">0/11</strong></span>
+            <span>Overseas: <strong id="my-overseas-count">0/4 ✈️</strong></span>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- DESKTOP RIGHT SIDEBAR: FEED & BANTER -->
+      <aside class="desktop-sidebar">
+        <div class="glass" style="padding: 16px; display: flex; flex-direction: column; gap: 12px; height: 100%;">
+          <h3 style="font-size: 0.85rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted);">
+            Live Feed & Taunts
+          </h3>
+          
+          <div id="bid-history-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 6px;">
+            <div style="color: var(--text-muted); font-size: 0.75rem; text-align: center; padding: 6px;">Waiting for first bid...</div>
+          </div>
+
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button class="taunt-pill" data-taunt="Whistle Podu! 🦁">Whistle Podu 🦁</button>
+            <button class="taunt-pill" data-taunt="Play Bold! E Sala Cup Namde 👑">Play Bold 👑</button>
+            <button class="taunt-pill" data-taunt="Ambani Pocket Money 💰">Ambani 💰</button>
+            <button class="taunt-pill" data-taunt="Bro is cooked! 🔥">Cooked 🔥</button>
+          </div>
+
+          <div class="chat-messages" id="chat-messages-box" style="flex: 1; min-height: 100px; max-height: 180px; overflow-y: auto; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 6px; font-size: 0.8rem;"></div>
+          
+          <div style="display: flex; gap: 6px;">
+            <input type="text" id="chat-input" class="text-input" placeholder="Taunt friends..." style="padding: 8px 10px; font-size: 0.8rem; min-height: 36px;">
+            <button id="btn-send-chat" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; min-height: 36px;">Send</button>
+          </div>
+        </div>
+      </aside>
+
+    </div>
+
+    <!-- FIXED MOBILE BIDDING DOCK (Sticks to bottom of phone screen) -->
+    <div class="mobile-fixed-dock">
+      <div class="quick-inc-row">
+        <button class="inc-btn quick-inc-btn" data-inc="0.20">+20L</button>
+        <button class="inc-btn quick-inc-btn" data-inc="0.50">+50L</button>
+        <button class="inc-btn quick-inc-btn" data-inc="1.00">+1.0Cr</button>
+        <button class="inc-btn quick-inc-btn" data-inc="2.00">+2.0Cr</button>
+      </div>
+
+      <button id="btn-raise-bid-mobile" class="paddle-btn">
+        <span>🏏 RAISE:</span>
+        <span id="btn-paddle-amount-mobile">₹2.00 Cr</span>
+      </button>
+
+      <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-top: 6px; color: var(--text-muted);">
+        <span>Purse: <strong id="my-purse-val-mobile" style="color: var(--accent-green);">₹100.0 Cr</strong></span>
+        <span>Squad: <strong id="my-squad-count-mobile">0/11</strong> (✈️<span id="my-overseas-count-mobile">0/4</span>)</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- ================= BROADCAST CELEBRATION MODAL ================= -->
+  <div id="sold-modal" class="sold-modal">
+    <div class="sold-content-card glass" id="sold-card-body">
+      
+      <!-- Top Celebration Pill -->
+      <div class="sold-celebration-pill" id="sold-celebration-pill">
+        <span>🔨</span> <span id="sold-header-text">HAMMER DOWN — OFFICIAL SIGNING!</span>
+      </div>
+
+      <!-- Winning Team Logo & Title -->
+      <div style="margin: 14px 0 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+        <img id="sold-team-logo" class="sold-team-logo-big" src="" alt="Franchise Logo" onerror="this.style.display='none'; document.getElementById('sold-team-fallback-badge').style.display='block';">
+        <div id="sold-team-fallback-badge" style="display:none; font-size: 3.5rem; line-height: 1; margin-bottom: 8px;">🏆</div>
+        <div style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 1px;">SOLD TO FRANCHISE</div>
+        <div id="sold-team-title" style="font-size: 1.6rem; font-weight: 900; color: #f59e0b; text-shadow: 0 0 20px rgba(245,158,11,0.4);">CHENNAI SUPER KINGS</div>
+      </div>
+
+      <!-- Player Spotlight Card -->
+      <div class="sold-player-spotlight">
+        <img id="sold-player-photo" class="sold-player-photo-img" src="" alt="Player Photo" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\' fill=\'%2394a3b8\'><circle cx=\'50\' cy=\'35\' r=\'24\'/><path d=\'M18 90c0-18 14-32 32-32s32 14 32 32z\'/></svg>';">
+        <div style="text-align: left; flex: 1;">
+          <div id="sold-player-name" style="font-size: 1.35rem; font-weight: 900; color: #fff;">Player Name</div>
+          <div style="display: flex; gap: 6px; margin-top: 4px;">
+            <span class="sold-badge-pill" id="sold-player-role">Batsman</span>
+            <span class="sold-badge-pill" id="sold-player-country">IND 🇮🇳</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Final Bid Amount & Aura Boost -->
+      <div style="margin: 12px 0 10px;">
+        <div class="sold-banner-price" id="sold-banner-price">₹18.00 Crores</div>
+        <div class="sold-aura-pill">
+          <span>🔥</span> <span>+10,000 AURA MOVE</span>
+        </div>
+      </div>
+
+      <!-- Peak Drop Equalizer & Now Playing BGM Badge -->
+      <div class="sold-music-dock">
+        <div class="sound-wave-eq">
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+        </div>
+        <div style="text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">
+          <div id="sold-song-badge" style="font-size: 0.85rem; font-weight: 800; color: #fff;">Playing Peak Drop</div>
+          <div id="sold-song-artist" style="font-size: 0.72rem; color: #94a3b8;">Viral Instagram Audio</div>
+        </div>
+      </div>
+
+      <!-- Quick Dismiss Button -->
+      <button id="btn-dismiss-sold" class="btn btn-secondary" style="margin-top: 14px; width: 100%; border-radius: 9999px; font-weight: 800; font-size: 0.85rem; padding: 8px;">
+        Continue Auction ⚡
+      </button>
+
+    </div>
+  </div>
+
+  <!-- ================= VIEW 3: FRANCHISES & SQUADS (MOBILE TAB) ================= -->
+  <main id="view-franchises" class="view-screen">
+    <div class="analyzer-container">
+      <h2 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 12px; text-align: center;">ALL 10 FRANCHISES</h2>
+      <div id="mobile-franchises-list"></div>
+    </div>
+  </main>
+
+  <!-- ================= VIEW 4: CHAT & BANTER (MOBILE TAB) ================= -->
+  <main id="view-chat" class="view-screen">
+    <div class="analyzer-container">
+      <h2 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 12px; text-align: center;">AUCTION ROOM BANTER</h2>
+      
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; justify-content: center;">
+        <button class="taunt-pill" data-taunt="Whistle Podu! 🦁">Whistle Podu 🦁</button>
+        <button class="taunt-pill" data-taunt="Play Bold! 👑">Play Bold 👑</button>
+        <button class="taunt-pill" data-taunt="Duniya Hila Denge ⚡">Duniya Hila Denge ⚡</button>
+        <button class="taunt-pill" data-taunt="Ambani Pocket Money 💰">Ambani 💰</button>
+        <button class="taunt-pill" data-taunt="Overpaid Clown! 🤡">Overpaid Clown 🤡</button>
+        <button class="taunt-pill" data-taunt="Bro is cooked! 🔥">Cooked 🔥</button>
+      </div>
+
+      <div class="glass" style="padding: 16px; margin-bottom: 14px;">
+        <div id="mobile-chat-messages" style="height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; font-size: 0.9rem;"></div>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="mobile-chat-input" class="text-input" placeholder="Type banter...">
+        <button id="btn-mobile-send-chat" class="btn btn-primary" style="padding: 10px 18px;">Send</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ================= VIEW 5: PRO AI SQUAD ANALYZER & HARSH JUDGE ================= -->
+  <main id="view-analyzer" class="view-screen">
+    <div class="analyzer-container">
+      <div class="analyzer-header">
+        <h1 style="background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+          THE PRO AI SQUAD JUDGE
+        </h1>
+        <p>Tactical Playing XI, Aura Points Leaderboard, Steals vs Scams, and Brutal Pundit Roasts!</p>
+      </div>
+
+      <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+        <button id="btn-copy-squad-card" class="btn btn-primary" style="font-size: 0.95rem; font-weight: 800; padding: 10px 22px;">
+          📸 Share Squad Card on WhatsApp
+        </button>
+      </div>
+
+      <!-- 🏆 1ST PLACE CHAMPION & OFFICIAL VERDICT -->
+      <div id="first-place-winner-card" class="glass" style="display: none; padding: 20px; margin-bottom: 24px; border: 2px solid #eab308; box-shadow: 0 10px 30px rgba(234, 179, 8, 0.25);">
+        <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 12px; flex-wrap: wrap;">
+          <img id="champ-winner-logo" src="" style="width: 58px; height: 58px; object-fit: contain;">
+          <div>
+            <div style="font-size: 0.8rem; font-weight: 800; color: #eab308; text-transform: uppercase; letter-spacing: 1.5px;">👑 1ST PLACE — BEST SQUAD OF THE AUCTION</div>
+            <h2 id="champ-winner-name" style="font-size: 1.6rem; font-weight: 900; color: #fff; margin: 2px 0 0;">-</h2>
+          </div>
+        </div>
+        <div style="background: rgba(0,0,0,0.35); border-radius: 10px; padding: 14px; margin-bottom: 12px; border-left: 4px solid #eab308;">
+          <div style="font-size: 0.72rem; text-transform: uppercase; color: #f59e0b; font-weight: 800; letter-spacing: 1px; margin-bottom: 4px;">WHY THIS TEAM WON 1ST PLACE:</div>
+          <p id="champ-winner-reason" style="font-size: 0.95rem; line-height: 1.5; color: #f8fafc; font-weight: 600; margin: 0;"></p>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <span class="glass-pill" id="champ-score-pill" style="color: #22c55e; font-weight: 800; font-size: 0.82rem;"></span>
+          <span class="glass-pill" id="champ-spent-pill" style="color: #f59e0b; font-weight: 800; font-size: 0.82rem;"></span>
+          <span class="glass-pill" id="champ-squad-count" style="color: #38bdf8; font-weight: 800; font-size: 0.82rem;"></span>
+        </div>
+      </div>
+
+      <!-- AURA LEADERBOARD -->
+      <div class="glass" style="padding: 18px; margin-bottom: 20px;">
+        <h2 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 12px;">🔥 AURA LEADERBOARD</h2>
+        <div style="overflow-x: auto;">
+          <table class="leaderboard-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Franchise</th>
+                <th>Bat</th>
+                <th>Bowl</th>
+                <th>Aura</th>
+                <th>Tier</th>
+              </tr>
+            </thead>
+            <tbody id="aura-leaderboard-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- DETAILED TEAM CRITIQUE SELECTOR -->
+      <div id="analyzer-team-tabs" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 16px;"></div>
+
+      <!-- TEAM AUDIT CARD -->
+      <div class="glass" style="padding: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <img id="critique-team-logo" src="" style="width: 44px; height: 44px; object-fit: contain;">
+            <div>
+              <h2 id="critique-team-name" style="font-size: 1.6rem; font-weight: 900;">Chennai Super Kings</h2>
+              <div style="display: flex; gap: 8px; align-items: center; margin-top: 2px;">
+                <span id="critique-tier-badge" class="tier-badge" style="background: #eab308; color: #000;">SSS GOD TIER</span>
+                <span id="critique-aura-points" style="font-weight: 900; color: #f59e0b;">+9,450 AURA</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 14px;">
+            <div style="text-align: center;">
+              <div style="font-size: 0.65rem; color: var(--text-muted);">BATTING</div>
+              <div id="critique-bat-score" style="font-size: 1.3rem; font-weight: 900; color: #38bdf8;">88</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 0.65rem; color: var(--text-muted);">BOWLING</div>
+              <div id="critique-bowl-score" style="font-size: 1.3rem; font-weight: 900; color: #ef4444;">84</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 0.65rem; color: var(--text-muted);">SYNERGY</div>
+              <div id="critique-balance-score" style="font-size: 1.3rem; font-weight: 900; color: #22c55e;">92</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Steal vs Overpay -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+          <div class="glass" style="padding: 12px; border-left: 4px solid #22c55e;">
+            <div style="font-size: 0.75rem; color: #22c55e; font-weight: 800;">💎 STEAL OF THE AUCTION</div>
+            <div id="critique-steal-text" style="font-size: 0.9rem; font-weight: 700; margin-top: 4px;">-</div>
+          </div>
+          <div class="glass" style="padding: 12px; border-left: 4px solid #ef4444;">
+            <div style="font-size: 0.75rem; color: #ef4444; font-weight: 800;">💸 OVERPAY SCAM</div>
+            <div id="critique-overpay-text" style="font-size: 0.9rem; font-weight: 700; margin-top: 4px;">-</div>
+          </div>
+        </div>
+
+        <!-- The 3 Commentaries -->
+        <h3 style="font-size: 1.05rem; font-weight: 800; margin-bottom: 10px;">🎙️ THE PRO AI JUDGE'S VERDICTS</h3>
+        
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+          <div class="glass" style="padding: 14px; border-left: 4px solid #f59e0b;">
+            <div style="font-size: 0.85rem; font-weight: 800; color: #f59e0b; margin-bottom: 4px;">🎙️ Ravi Shastri Blast</div>
+            <p id="commentary-shastri" style="font-size: 0.85rem; font-style: italic; color: #cbd5e1; line-height: 1.4;">-</p>
+          </div>
+
+          <div class="glass" style="padding: 14px; border-left: 4px solid #38bdf8;">
+            <div style="font-size: 0.85rem; font-weight: 800; color: #38bdf8; margin-bottom: 4px;">🧐 Harsha Bhogle Tactical</div>
+            <p id="commentary-harsha" style="font-size: 0.85rem; font-style: italic; color: #cbd5e1; line-height: 1.4;">-</p>
+          </div>
+
+          <div class="glass" style="padding: 14px; border-left: 4px solid #ef4444;">
+            <div style="font-size: 0.85rem; font-weight: 800; color: #ef4444; margin-bottom: 4px;">🔥 Savage Roast & Aura Audit</div>
+            <p id="commentary-meme" style="font-size: 0.85rem; font-style: italic; color: #cbd5e1; line-height: 1.4;">-</p>
+          </div>
+        </div>
+
+        <!-- Tactical Playing XI -->
+        <h3 style="font-size: 1.05rem; font-weight: 800; margin-bottom: 10px;">🏏 TACTICAL PLAYING XI LINEUP</h3>
+        <div id="critique-xi-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px;"></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
