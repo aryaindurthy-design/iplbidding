@@ -32,6 +32,11 @@ app.use((req, res, next) => {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Explicitly serve brand emblem logo
+app.get('/ipl-auction-logo.png', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'ipl-auction-logo.png'));
+});
+
 // Detect local IPv4 address
 function getLocalIp() {
   const interfaces = os.networkInterfaces();
