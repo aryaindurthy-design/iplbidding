@@ -954,6 +954,32 @@ body {
     padding: 6px 8px;
     font-size: 0.75rem;
   }
+  #modal-waiting-lobby {
+    padding: 8px !important;
+    align-items: flex-start !important;
+  }
+  #modal-waiting-lobby .glass {
+    padding: 16px 12px !important;
+    margin: 8px auto !important;
+  }
+  #lobby-code-display {
+    font-size: 2.2rem !important;
+  }
+  #btn-start-auction-top {
+    font-size: 1.05rem !important;
+    padding: 12px 10px !important;
+  }
+}
+
+/* Pulsing effect on top start button (No transform to prevent layout shift or click-target motion) */
+#btn-start-auction-top {
+  animation: start-pulse 2s infinite ease-in-out;
+}
+
+@keyframes start-pulse {
+  0% { box-shadow: 0 0 14px rgba(245, 158, 11, 0.4); }
+  50% { box-shadow: 0 0 28px rgba(245, 158, 11, 0.85); }
+  100% { box-shadow: 0 0 14px rgba(245, 158, 11, 0.4); }
 }
 
 /* First Place Winner Card Styling */

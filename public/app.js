@@ -249,13 +249,18 @@ window.addEventListener('DOMContentLoaded', async () => {
   const roomParam = urlParams.get('room');
   if (roomParam) {
     const joinInput = document.getElementById('join-code-input');
+    const joinBtn = document.getElementById('btn-join-room');
     if (joinInput) {
       joinInput.value = roomParam.toUpperCase();
       checkRoomCodeAvailability(roomParam.toUpperCase());
       setTimeout(() => {
         joinInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
         joinInput.focus();
-      }, 300);
+        if (joinBtn) {
+          joinBtn.style.boxShadow = '0 0 25px rgba(56, 189, 248, 0.7)';
+          joinBtn.innerHTML = 'Enter Auction Room 🚪 (Tap to Join!)';
+        }
+      }, 400);
     }
   }
 
@@ -832,23 +837,34 @@ function setupEventListeners() {
     });
   });
 
-  // Start Auction from Waiting Lobby
-  document.getElementById('btn-start-auction-now').addEventListener('click', () => {
+  // Start Auction Trigger (Attached to both Top and Bottom buttons)
+  function triggerStartAuction() {
     if (!myRoomId) return;
-    const btn = document.getElementById('btn-start-auction-now');
-    btn.disabled = true;
-    btn.innerHTML = '⏳ Starting Auction...';
+    window.audioEngine.init();
+
+    const topBtn = document.getElementById('btn-start-auction-top');
+    const btmBtn = document.getElementById('btn-start-auction-now');
+    if (topBtn) { topBtn.disabled = true; topBtn.innerHTML = '⏳ Starting Auction...'; }
+    if (btmBtn) { btmBtn.disabled = true; btmBtn.innerHTML = '⏳ Starting Auction...'; }
+
+    const botsCheckbox = document.getElementById('lobby-setting-bots');
+    const fillWithBots = botsCheckbox ? botsCheckbox.checked : true;
 
     const startTimeout = setTimeout(() => {
-      btn.disabled = false;
-      btn.innerHTML = 'Start Live Auction Now 🔨';
+      if (topBtn) { topBtn.disabled = false; topBtn.innerHTML = isHost ? 'START LIVE AUCTION NOW 🔨 (Host)' : 'START LIVE AUCTION NOW 🔨 (Ready!)'; }
+      if (btmBtn) { btmBtn.disabled = false; btmBtn.innerHTML = 'START AUCTION 🔨'; }
       showNotificationToast('⚠️ Starting auction took longer than expected. Please tap again.', '#f59e0b');
     }, 15000);
 
-    socket.emit('startAuction', { roomId: myRoomId, playerToken: myPlayerToken }, (res) => {
+    socket.emit('startAuction', {
+      roomId: myRoomId,
+      playerToken: myPlayerToken,
+      fillWithBots
+    }, (res) => {
       clearTimeout(startTimeout);
-      btn.disabled = false;
-      btn.innerHTML = 'Start Live Auction Now 🔨';
+      if (topBtn) { topBtn.disabled = false; topBtn.innerHTML = isHost ? 'START LIVE AUCTION NOW 🔨 (Host)' : 'START LIVE AUCTION NOW 🔨 (Ready!)'; }
+      if (btmBtn) { btmBtn.disabled = false; btmBtn.innerHTML = 'START AUCTION 🔨'; }
+
       if (res && res.success) {
         if (res.state) roomState = res.state;
         views.waitingLobby.style.display = 'none';
@@ -861,10 +877,16 @@ function setupEventListeners() {
         }
         if (window.audioEngine) window.audioEngine.playGavel();
       } else if (res && !res.success) {
-        alert(res.message || 'Could not start auction. Make sure you are the room host.');
+        alert(res.message || 'Could not start auction. Make sure you are in the room.');
       }
     });
-  });
+  }
+
+  const topStartBtn = document.getElementById('btn-start-auction-top');
+  if (topStartBtn) topStartBtn.addEventListener('click', triggerStartAuction);
+
+  const btmStartBtn = document.getElementById('btn-start-auction-now');
+  if (btmStartBtn) btmStartBtn.addEventListener('click', triggerStartAuction);
 
   document.getElementById('btn-leave-lobby').addEventListener('click', () => {
     clearSession();
@@ -986,18 +1008,33 @@ function showWaitingLobby() {
     waBtn.href = `https://api.whatsapp.com/send?text=${waText}`;
   }
 
-  const startBtn = document.getElementById('btn-start-auction-now');
+  const topStartBtn = document.getElementById('btn-start-auction-top');
+  const btmStartBtn = document.getElementById('btn-start-auction-now');
   const waitingNotice = document.getElementById('lobby-waiting-notice');
 
+  if (topStartBtn) topStartBtn.style.display = 'block';
+  if (btmStartBtn) btmStartBtn.style.display = 'block';
+
   if (isHost) {
-    if (startBtn) startBtn.style.display = 'block';
-    if (waitingNotice) waitingNotice.style.display = 'none';
-  } else {
-    if (startBtn) startBtn.style.display = 'none';
+    if (topStartBtn) topStartBtn.innerHTML = 'START LIVE AUCTION NOW 🔨 (Host)';
+    if (btmStartBtn) btmStartBtn.innerHTML = 'START AUCTION 🔨';
     if (waitingNotice) {
       waitingNotice.style.display = 'block';
-      const hostName = (roomState && roomState.hostName) ? roomState.hostName : 'Host';
-      waitingNotice.textContent = `⏳ Waiting for Room Host (${hostName}) to start the auction... (Get your paddles ready!)`;
+      waitingNotice.style.color = '#a7f3d0';
+      waitingNotice.style.background = 'rgba(34,197,94,0.1)';
+      waitingNotice.style.borderColor = 'rgba(34,197,94,0.3)';
+      waitingNotice.innerHTML = `👑 You are the <strong>Host</strong>! Share the code <strong>${myRoomId}</strong> with friends. Tap above to start anytime!`;
+    }
+  } else {
+    const hostName = (roomState && roomState.hostName) ? roomState.hostName : 'Host';
+    if (topStartBtn) topStartBtn.innerHTML = 'START LIVE AUCTION NOW 🔨 (Ready!)';
+    if (btmStartBtn) btmStartBtn.innerHTML = 'START AUCTION 🔨';
+    if (waitingNotice) {
+      waitingNotice.style.display = 'block';
+      waitingNotice.style.color = '#38bdf8';
+      waitingNotice.style.background = 'rgba(56,189,248,0.1)';
+      waitingNotice.style.borderColor = 'rgba(56,189,248,0.3)';
+      waitingNotice.innerHTML = `👥 Connected with <strong>${hostName}</strong>! Both you and the host can tap <strong>START AUCTION</strong> above when ready!`;
     }
   }
 

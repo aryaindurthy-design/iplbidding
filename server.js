@@ -146,8 +146,8 @@ function createRoomInstance(roomId, hostSocketId, hostName, selectedTeamId, opti
   const squadLimit = options.squadLimit || 11;
   const overseasLimit = options.overseasLimit || 4;
   const timerDuration = options.timerDuration || 12;
-  // By default, fillWithBots is false so room is 100% private for friends only
-  const fillWithBots = options.fillWithBots === true;
+  // By default, fillWithBots is true so unpicked teams bid as smart AI bots alongside friends!
+  const fillWithBots = options.fillWithBots !== false;
 
   // Initialize all 10 IPL teams for this room
   const teams = {};
@@ -657,7 +657,8 @@ io.on('connection', (socket) => {
 
   // 2b. Switch Team in Waiting Lobby ONLY (Locked once match starts)
   socket.on('switchTeam', ({ roomId, newTeamId, playerToken }, callback) => {
-    const room = rooms.get(roomId);
+    const upperCode = (roomId || '').trim().toUpperCase();
+    const room = rooms.get(upperCode);
     if (!room) {
       if (callback) callback({ success: false, message: 'Room not found' });
       return;
@@ -700,9 +701,9 @@ io.on('connection', (socket) => {
     currentTeamId = newTeamId;
 
     const publicState = getPublicRoomState(room);
-    io.to(roomId).emit('roomUpdated', publicState);
+    io.to(upperCode).emit('roomUpdated', publicState);
 
-    io.to(roomId).emit('playerJoinedLobby', {
+    io.to(upperCode).emit('playerJoinedLobby', {
       playerName,
       teamId: newTeam.id,
       teamName: newTeam.name,
@@ -716,7 +717,8 @@ io.on('connection', (socket) => {
 
   // 2c. Host Kick Player from Franchise
   socket.on('kickPlayer', ({ roomId, targetTeamId }, callback) => {
-    const room = rooms.get(roomId);
+    const upperCode = (roomId || '').trim().toUpperCase();
+    const room = rooms.get(upperCode);
     if (!room || room.hostSocketId !== socket.id) {
       if (callback) callback({ success: false, message: 'Only the room host can remove players' });
       return;
@@ -739,13 +741,13 @@ io.on('connection', (socket) => {
     }
 
     const publicState = getPublicRoomState(room);
-    io.to(roomId).emit('roomUpdated', publicState);
-    io.to(roomId).emit('auctionUpdate', publicState);
+    io.to(upperCode).emit('roomUpdated', publicState);
+    io.to(upperCode).emit('auctionUpdate', publicState);
     if (callback) callback({ success: true, state: publicState });
   });
 
-  // 3. Start Auction (Reliable Host Validation with Reconnect Recovery)
-  socket.on('startAuction', ({ roomId, playerToken }, callback) => {
+  // 3. Start Auction (Host or any joined Room Member can start)
+  socket.on('startAuction', ({ roomId, playerToken, fillWithBots }, callback) => {
     const upperCode = (roomId || '').trim().toUpperCase();
     const room = rooms.get(upperCode);
     if (!room) {
@@ -754,17 +756,34 @@ io.on('connection', (socket) => {
     }
 
     const isHost = (room.hostSocketId === socket.id) || (playerToken && room.hostToken === playerToken);
-    if (!isHost) {
-      console.warn(`[Start Auction Rejected] Socket: ${socket.id}, Expected Host: ${room.hostSocketId}`);
-      if (callback) callback({ success: false, message: 'Only the room host can start the auction!' });
+    const isMember = isHost || Object.values(room.teams).some(t => t.ownerSocketId === socket.id || (playerToken && t.ownerToken === playerToken));
+
+    if (!isMember) {
+      console.warn(`[Start Auction Rejected] Socket: ${socket.id} is not in room ${upperCode}`);
+      if (callback) callback({ success: false, message: 'You must join this room to start the auction!' });
       return;
     }
 
-    // Re-bind host socket id in case of reconnect and ensure socket is in the room channel
-    room.hostSocketId = socket.id;
+    // Ensure socket is joined to the room's socket.io channel
+    if (isHost) room.hostSocketId = socket.id;
     socket.join(upperCode);
 
-    console.log(`[Auction Started] Room: ${upperCode} by Host: ${room.hostName}`);
+    // Update fillWithBots setting if provided
+    if (fillWithBots !== undefined) {
+      room.options.fillWithBots = (fillWithBots === true);
+    }
+
+    // When starting, if fillWithBots is enabled, make all unowned franchises active AI bots
+    if (room.options.fillWithBots !== false) {
+      Object.values(room.teams).forEach(t => {
+        if (!t.ownerSocketId) {
+          t.isBot = true;
+          t.ownerName = `${t.shortName} AI Bot`;
+        }
+      });
+    }
+
+    console.log(`[Auction Started] Room: ${upperCode} by ${isHost ? 'Host' : 'Member'} (Socket: ${socket.id})`);
     startAuctionClock(room);
     const publicState = getPublicRoomState(room);
     if (callback) callback({ success: true, state: publicState });

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="referrer" content="no-referrer">
   <title>IPL Mega Auction Arena & Pro AI Squad Analyzer</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=2.4.0">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -197,43 +197,56 @@
   </main>
 
   <!-- ================= MODAL: WAITING LOBBY ================= -->
-  <div id="modal-waiting-lobby" style="position: fixed; inset: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); z-index: 200; display: none; align-items: center; justify-content: center; padding: 16px; opacity: 1;">
-    <div class="glass" style="max-width: 500px; width: 100%; padding: 24px; text-align: center; border: 2px solid rgba(245,158,11,0.5); box-shadow: 0 15px 45px rgba(0,0,0,0.85); opacity: 1;">
-      <h2 style="font-size: 1.6rem; font-weight: 900; margin-bottom: 4px;">AUCTION ROOM LOBBY</h2>
-      <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 14px;">Share this code with your friends to join:</p>
+  <div id="modal-waiting-lobby" style="position: fixed; inset: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); z-index: 200; display: none; align-items: flex-start; justify-content: center; padding: 12px; overflow-y: auto; -webkit-overflow-scrolling: touch;">
+    <div class="glass" style="max-width: 520px; width: 100%; margin: 16px auto; padding: 20px 16px; text-align: center; border: 2px solid rgba(245,158,11,0.55); box-shadow: 0 15px 50px rgba(0,0,0,0.9); border-radius: 20px;">
+      <h2 style="font-size: 1.5rem; font-weight: 900; margin-bottom: 4px; color: #fff;">AUCTION ROOM LOBBY</h2>
+      <p style="color: var(--text-muted); font-size: 0.82rem; margin-bottom: 12px;">Share this code with your friends to join:</p>
       
       <!-- Big Room Code & 1-Tap Share Buttons -->
-      <div style="background: rgba(0,0,0,0.5); padding: 14px 18px; border-radius: 16px; border: 1px solid rgba(245,158,11,0.3); margin-bottom: 14px;">
+      <div style="background: rgba(0,0,0,0.55); padding: 12px 16px; border-radius: 16px; border: 1px solid rgba(245,158,11,0.35); margin-bottom: 12px;">
         <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 800; letter-spacing: 1px;">YOUR 5-LETTER ROOM CODE</div>
-        <div id="lobby-code-display" style="font-size: 2.8rem; font-weight: 900; letter-spacing: 5px; color: #f59e0b; margin: 4px 0 10px; line-height: 1;">------</div>
+        <div id="lobby-code-display" style="font-size: 2.7rem; font-weight: 900; letter-spacing: 5px; color: #f59e0b; margin: 2px 0 8px; line-height: 1;">------</div>
         <div style="display: flex; gap: 8px;">
-          <button id="btn-copy-room-link" class="btn btn-secondary" style="flex: 1; padding: 10px; font-size: 0.85rem; font-weight: 800;">
+          <button id="btn-copy-room-link" class="btn btn-secondary" style="flex: 1; padding: 10px 8px; font-size: 0.82rem; font-weight: 800;">
             📋 Copy Invite Link
           </button>
-          <a id="btn-whatsapp-share" class="btn btn-success" target="_blank" style="flex: 1; padding: 10px; font-size: 0.85rem; font-weight: 800; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-            📲 Share on WhatsApp
+          <a id="btn-whatsapp-share" class="btn btn-success" target="_blank" style="flex: 1; padding: 10px 8px; font-size: 0.82rem; font-weight: 800; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+            📲 WhatsApp Invite
           </a>
         </div>
       </div>
 
-      <div style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 16px; word-break: break-all;">
+      <!-- 🌟 TOP PRIMARY 1-TAP START AUCTION BUTTON (ALWAYS VISIBLE AT TOP ON ALL MOBILES) -->
+      <button id="btn-start-auction-top" class="btn btn-primary btn-block" style="font-size: 1.15rem; font-weight: 900; padding: 13px; margin-bottom: 10px; box-shadow: 0 0 25px rgba(245,158,11,0.55); text-transform: uppercase; letter-spacing: 0.5px;">
+        START LIVE AUCTION NOW 🔨
+      </button>
+
+      <!-- 🤖 AI Bots Toggle for remaining franchises -->
+      <div style="background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 10px; padding: 8px 12px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+        <label for="lobby-setting-bots" style="font-size: 0.8rem; font-weight: 700; color: #a7f3d0; text-align: left; cursor: pointer;">
+          🤖 Fill unpicked teams with AI Bots
+        </label>
+        <input type="checkbox" id="lobby-setting-bots" checked style="width: 18px; height: 18px; cursor: pointer;">
+      </div>
+
+      <div style="font-size: 0.78rem; color: #94a3b8; margin-bottom: 14px; word-break: break-all;">
         Direct Link: <strong id="lobby-ip-display" style="color: #38bdf8;">https://iplbidding.vercel.app/?room=...</strong>
       </div>
 
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <h3 style="font-size: 0.95rem; font-weight: 800; margin: 0; text-align: left;">Franchises Claimed (<span id="lobby-member-count">1</span>/10):</h3>
+        <h3 style="font-size: 0.92rem; font-weight: 800; margin: 0; text-align: left;">Franchises Claimed (<span id="lobby-member-count">1</span>/10):</h3>
         <button id="btn-lobby-switch-team" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem; font-weight: 800;">
           🔄 Switch My Team
         </button>
       </div>
-      <div id="lobby-members-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; max-height: 190px; overflow-y: auto;"></div>
+      <div id="lobby-members-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; max-height: 180px; overflow-y: auto; -webkit-overflow-scrolling: touch;"></div>
 
-      <div id="lobby-waiting-notice" style="display: none; background: rgba(56,189,248,0.12); border: 1px solid rgba(56,189,248,0.4); padding: 12px; border-radius: 12px; color: #38bdf8; font-weight: 800; font-size: 0.88rem; margin-bottom: 14px;">
+      <div id="lobby-waiting-notice" style="display: none; background: rgba(56,189,248,0.12); border: 1px solid rgba(56,189,248,0.4); padding: 10px; border-radius: 12px; color: #38bdf8; font-weight: 800; font-size: 0.85rem; margin-bottom: 12px;">
         ⏳ Waiting for Room Host to start the auction... (Get ready!)
       </div>
 
       <div style="display: flex; gap: 10px;">
-        <button id="btn-start-auction-now" class="btn btn-primary" style="flex: 2; font-size: 1.1rem; font-weight: 900;">
+        <button id="btn-start-auction-now" class="btn btn-primary" style="flex: 2; font-size: 1.05rem; font-weight: 900;">
           START AUCTION 🔨
         </button>
         <button id="btn-leave-lobby" class="btn btn-secondary" style="flex: 1;">Leave</button>
@@ -643,6 +656,6 @@
     </div>
   </main>
 
-  <script src="app.js?v=2.3.1"></script>
+  <script src="app.js?v=2.4.0"></script>
 </body>
 </html>
