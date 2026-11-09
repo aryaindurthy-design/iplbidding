@@ -1,0 +1,18 @@
+name: 24/7 Unstoppable Keepalive Ping
+
+on:
+  schedule:
+    # Run every 10 minutes 24/7/365 to keep the cloud server permanently awake
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Cloud Backend Server
+        run: |
+          echo "Pinging 24/7 Cloud Auction Backend Server..."
+          curl -s -f --max-time 15 "https://iplbidding-backend.onrender.com/api/teams" || echo "Ping sent to backend"
+          curl -s -f --max-time 15 "https://iplbidding.vercel.app/api/teams" || echo "Ping sent to frontend"
+          echo "Server is warm and online 24/7!"

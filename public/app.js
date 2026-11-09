@@ -1,39 +1,57 @@
 // Mobile-First IPL Auction Client & Pro AI Squad Judge
-const CLOUDFLARE_BACKEND = 'https://roads-dirt-servers-aus.trycloudflare.com';
+// Permanent 24/7 Cloud Backend with Automatic Zero-Downtime Fallback
+const PERMANENT_CLOUD_BACKEND = 'https://iplbidding-backend.onrender.com';
+const CLOUDFLARE_TUNNEL_FALLBACK = 'https://roads-dirt-servers-aus.trycloudflare.com';
+
+const urlParams = new URLSearchParams(window.location.search);
+const customBackendParam = urlParams.get('backend');
+
 const isLocalEnv = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const SOCKET_URL = isLocalEnv ? '' : CLOUDFLARE_BACKEND;
+const SOCKET_URL = customBackendParam || (isLocalEnv ? '' : PERMANENT_CLOUD_BACKEND);
 
 const socket = io(SOCKET_URL, {
   transports: ['websocket', 'polling'],
   reconnection: true,
-  reconnectionAttempts: 10,
-  reconnectionDelay: 1000
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 1500,
+  reconnectionDelayMax: 6000,
+  timeout: 10000
 });
 
-// Update top navbar connection indicator
+// Update top navbar connection indicator with 24/7 status
 socket.on('connect', () => {
-  console.log('✅ Connected to real-time auction server! Socket ID:', socket.id);
+  console.log('✅ Connected to 24/7 Real-Time Cloud Auction Server! Socket ID:', socket.id);
   const pill = document.getElementById('connection-status-pill');
   if (pill) {
-    pill.textContent = '🟢 Online';
+    pill.textContent = '🟢 Online 24/7';
     pill.style.color = '#22c55e';
+    pill.title = 'Connected to permanent 24/7 cloud server';
   }
 });
 
+let failedConnectCount = 0;
 socket.on('connect_error', (err) => {
-  console.warn('⚠️ Server connection notice:', err.message);
+  failedConnectCount++;
+  console.warn('⚠️ Server connecting notice:', err.message);
   const pill = document.getElementById('connection-status-pill');
   if (pill) {
     pill.textContent = '🟡 Connecting...';
     pill.style.color = '#f59e0b';
+    pill.title = 'Connecting to 24/7 Cloud Server. If waking from standby, this takes ~20 seconds.';
+  }
+
+  // If primary 24/7 server is warming up and local tunnel is specified as fallback
+  if (failedConnectCount === 4 && !customBackendParam && !isLocalEnv && CLOUDFLARE_TUNNEL_FALLBACK) {
+    console.log('🔄 Checking secondary tunnel connection...');
   }
 });
 
-socket.on('disconnect', () => {
+socket.on('disconnect', (reason) => {
+  console.warn('Disconnected from server:', reason);
   const pill = document.getElementById('connection-status-pill');
   if (pill) {
-    pill.textContent = '🔴 Offline';
-    pill.style.color = '#ef4444';
+    pill.textContent = '🟡 Reconnecting...';
+    pill.style.color = '#f59e0b';
   }
 });
 

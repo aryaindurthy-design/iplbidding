@@ -1,6 +1,12 @@
 # 🏏 IPL Mega Auction Arena & Pro AI Squad Analyzer
 
-A broadcast-grade, real-time multiplayer IPL Mega Auction simulator inspired by `crickauction.in`, built with instant room lobbies, official player headshots, T20 stats, authentic IPL franchise theme songs on every hammer drop, and the **Pro AI Cricket Judge of All Time**!
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/aryaindurthy-design/iplbidding)
+
+A broadcast-grade, real-time multiplayer IPL Mega Auction simulator inspired by `crickauction.in`, built with instant room lobbies, official player headshots, T20 stats, 52 authentic Pan-Indian mass hero themes & BGMs on every hammer drop, and the **Pro AI Cricket Judge**!
+
+- 🌐 **Live Vercel Frontend:** https://iplbidding.vercel.app
+- ☁️ **Permanent 24/7 Backend:** https://github.com/aryaindurthy-design/iplbidding
+- 🚀 **1-Click 24/7 Cloud Deploy:** [Deploy to Render](https://render.com/deploy?repo=https://github.com/aryaindurthy-design/iplbidding)
 
 ---
 
