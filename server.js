@@ -47,12 +47,12 @@ function getLocalIp() {
 
 const LOCAL_IP = getLocalIp();
 const PORT = process.env.PORT || 3000;
-const CLOUDFLARE_TUNNEL_URL = 'https://sunset-graph-josh-numeric.trycloudflare.com';
+const CLOUD_BACKEND_URL = process.env.LIVE_BACKEND_URL || 'https://iplbidding-backend.onrender.com';
 
 // API route to get live persistent backend URL
 app.get('/api/server-url', (req, res) => {
   res.json({
-    url: process.env.LIVE_BACKEND_URL || CLOUDFLARE_TUNNEL_URL,
+    url: CLOUD_BACKEND_URL,
     localIp: LOCAL_IP,
     port: PORT
   });

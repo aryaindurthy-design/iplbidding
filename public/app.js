@@ -1,12 +1,14 @@
 // Mobile-First IPL Auction Client & Pro AI Squad Judge
-// Live High-Speed Multi-Region Cloud Tunnel
-const LIVE_BACKEND_TUNNEL = 'https://sunset-graph-josh-numeric.trycloudflare.com';
+// 24/7 Permanent Unstoppable Cloud Backend
+const CLOUD_BACKEND_URL = 'https://iplbidding-backend.onrender.com';
 
 const urlParams = new URLSearchParams(window.location.search);
 const customBackendParam = urlParams.get('backend');
 
 const isLocalEnv = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const SOCKET_URL = customBackendParam || (isLocalEnv ? '' : LIVE_BACKEND_TUNNEL);
+const isRenderEnv = window.location.hostname.includes('onrender.com');
+
+const SOCKET_URL = customBackendParam || ((isLocalEnv || isRenderEnv) ? '' : CLOUD_BACKEND_URL);
 
 // Persistent Player Token & Session Management
 function getOrCreatePlayerToken() {
@@ -661,6 +663,10 @@ function setupEventListeners() {
     btn.disabled = true;
     btn.innerHTML = '⏳ Creating Room...';
 
+    if (!socket.connected) {
+      showNotificationToast('⚡ Connecting to 24/7 Cloud Auction Server...', '#f59e0b');
+    }
+
     const hostName = document.getElementById('host-name-input').value.trim() || 'Captain Cool';
     const selectedTeamId = selectedHostTeamId || 'RCB';
     const purse = parseFloat(document.getElementById('setting-purse').value);
@@ -670,8 +676,8 @@ function setupEventListeners() {
     const timeout = setTimeout(() => {
       btn.disabled = false;
       btn.innerHTML = origText;
-      alert('Connecting to the auction server took longer than expected. Please check your internet and try again!');
-    }, 8000);
+      alert('Connecting to the 24/7 cloud server took longer than expected. Please check your internet connection and tap again!');
+    }, 25000);
 
     socket.emit('createRoom', {
       hostName,
@@ -715,11 +721,15 @@ function setupEventListeners() {
     btn.disabled = true;
     btn.innerHTML = '⏳ Entering Room...';
 
+    if (!socket.connected) {
+      showNotificationToast('⚡ Connecting to 24/7 Cloud Auction Server...', '#f59e0b');
+    }
+
     const timeout = setTimeout(() => {
       btn.disabled = false;
       btn.innerHTML = origText;
-      alert('Connecting to the room timed out. Please verify the room code and try again!');
-    }, 8000);
+      alert('Connecting to the room timed out. Please verify the room code and tap again!');
+    }, 25000);
 
     socket.emit('joinRoom', {
       roomId: roomCode,
@@ -763,7 +773,14 @@ function setupEventListeners() {
     btn.disabled = true;
     btn.innerHTML = '⏳ Starting Auction...';
 
+    const startTimeout = setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = 'Start Live Auction Now 🔨';
+      showNotificationToast('⚠️ Starting auction took longer than expected. Please tap again.', '#f59e0b');
+    }, 15000);
+
     socket.emit('startAuction', { roomId: myRoomId, playerToken: myPlayerToken }, (res) => {
+      clearTimeout(startTimeout);
       btn.disabled = false;
       btn.innerHTML = 'Start Live Auction Now 🔨';
       if (res && !res.success) {
