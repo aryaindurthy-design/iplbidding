@@ -51,34 +51,99 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 16px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border-color);
-  background: rgba(7, 10, 18, 0.9);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(7, 10, 18, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   position: sticky;
   top: 0;
   z-index: 100;
+  gap: 6px;
 }
 
 .brand-badge {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 900;
-  font-size: 1.15rem;
-  letter-spacing: -0.5px;
-  color: #fff;
+  flex-shrink: 0;
 }
 
-.brand-badge .trophy {
-  font-size: 1.4rem;
+.brand-logo-img {
+  height: 34px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.6));
+  transition: transform 0.2s ease;
 }
 
-.brand-badge span {
-  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+.brand-logo-img:hover {
+  transform: scale(1.05);
+}
+
+.online-indicator-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+  animation: status-blink 2s infinite ease-in-out;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.online-indicator-dot.connecting {
+  background: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+}
+
+.online-indicator-dot.offline {
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+}
+
+@keyframes status-blink {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.85); }
+}
+
+.team-logo-pill {
+  width: 32px;
+  height: 32px;
+  border-radius: 50% !important;
+  padding: 3px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.team-logo-pill img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  cursor: pointer;
+  border: none;
+}
+
+.exit-pill-btn {
+  background: rgba(239, 68, 68, 0.15) !important;
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+  color: #f87171 !important;
+  transition: all 0.2s ease;
+}
+
+.exit-pill-btn:hover {
+  background: rgba(239, 68, 68, 0.3) !important;
+  transform: scale(1.04);
 }
 
 /* Mobile Segmented Nav Tabs */
@@ -911,29 +976,32 @@ body {
 /* --- ENHANCED MOBILE RESPONSIVENESS & TOUCH CONTROLS --- */
 @media (max-width: 600px) {
   .top-nav {
-    padding: 8px 8px;
+    padding: 6px 8px;
     gap: 4px;
   }
-  .brand-badge {
-    font-size: 0.95rem;
-    gap: 4px;
-  }
-  .brand-badge .trophy {
-    font-size: 1.1rem;
+  .brand-logo-img {
+    height: 26px !important;
   }
   .glass-pill {
-    padding: 3px 6px;
-    font-size: 0.72rem;
+    padding: 2px 5px;
+    font-size: 0.7rem;
   }
   #btn-copy-code-pill {
-    padding: 3px 8px !important;
-    font-size: 0.75rem !important;
+    padding: 3px 6px !important;
+    font-size: 0.72rem !important;
   }
   #nav-my-team-pill {
-    padding: 3px 6px !important;
-    font-size: 0.75rem !important;
+    width: 26px !important;
+    height: 26px !important;
+    padding: 2px !important;
   }
   #host-controls button {
+    padding: 3px 5px !important;
+    font-size: 0.75rem !important;
+    min-width: 24px;
+    min-height: 24px;
+  }
+  .exit-pill-btn {
     padding: 3px 6px !important;
     font-size: 0.7rem !important;
   }
@@ -980,6 +1048,138 @@ body {
   0% { box-shadow: 0 0 14px rgba(245, 158, 11, 0.4); }
   50% { box-shadow: 0 0 28px rgba(245, 158, 11, 0.85); }
   100% { box-shadow: 0 0 14px rgba(245, 158, 11, 0.4); }
+}
+
+/* --- GRAND STADIUM 3D DOORS OPENING TRANSITION --- */
+.doors-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  perspective: 1400px;
+  overflow: hidden;
+  background: #040711;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: all;
+  transition: opacity 0.5s ease;
+}
+
+.grand-door {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50.5%;
+  height: 100%;
+  background: linear-gradient(135deg, #090e1a 0%, #151d30 50%, #090e1a 100%);
+  border: 4px solid #f59e0b;
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.9), 0 0 40px rgba(245, 158, 11, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 1.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 1.35s ease;
+  will-change: transform;
+  z-index: 2;
+}
+
+.door-left {
+  left: 0;
+  transform-origin: left center;
+  border-right: 2px solid rgba(245, 158, 11, 0.85);
+}
+
+.door-right {
+  right: 0;
+  transform-origin: right center;
+  border-left: 2px solid rgba(245, 158, 11, 0.85);
+}
+
+.door-inner-texture {
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(rgba(245, 158, 11, 0.14) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 24px 24px, 100% 48px;
+  position: relative;
+}
+
+.doors-center-stage {
+  position: absolute;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transition: opacity 0.6s ease, transform 0.6s ease;
+  padding: 0 16px;
+  text-align: center;
+}
+
+.doors-hero-logo {
+  width: 170px;
+  max-width: 60vw;
+  height: auto;
+  filter: drop-shadow(0 0 35px rgba(245, 158, 11, 0.85));
+  animation: hero-logo-pulse 1.8s infinite alternate ease-in-out;
+}
+
+.doors-stadium-banner {
+  margin-top: 14px;
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #f59e0b;
+  text-shadow: 0 0 15px rgba(245, 158, 11, 0.7);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 8px 18px;
+  border-radius: 9999px;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+}
+
+.doors-sub-banner {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.doors-light-beams {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(245, 158, 11, 0.55) 0%, rgba(239, 68, 68, 0.25) 40%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  z-index: 1;
+}
+
+/* OPENING STATE TRIGGERED VIA JS */
+.doors-overlay.opening .door-left {
+  transform: rotateY(-90deg);
+  box-shadow: 0 0 70px rgba(245, 158, 11, 0.85);
+}
+
+.doors-overlay.opening .door-right {
+  transform: rotateY(90deg);
+  box-shadow: 0 0 70px rgba(245, 158, 11, 0.85);
+}
+
+.doors-overlay.opening .doors-center-stage {
+  opacity: 0;
+  transform: scale(1.15);
+}
+
+.doors-overlay.opening .doors-light-beams {
+  opacity: 1;
+}
+
+.doors-overlay.fade-out {
+  opacity: 0;
 }
 
 /* First Place Winner Card Styling */

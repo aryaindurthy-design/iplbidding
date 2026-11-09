@@ -141,14 +141,13 @@ function attemptSessionRestore() {
   });
 }
 
-// Update top navbar connection indicator
+// Update top navbar connection indicator (Blinking dot with status tooltip)
 socket.on('connect', () => {
   console.log('✅ Connected to Real-Time Auction Server! Socket ID:', socket.id);
   const pill = document.getElementById('connection-status-pill');
   if (pill) {
-    pill.textContent = '🟢 Online';
-    pill.style.color = '#22c55e';
-    pill.title = 'Real-time WebSocket connected';
+    pill.className = 'online-indicator-dot online';
+    pill.title = '🟢 Connected to 24/7 Cloud Auction Server';
   }
   attemptSessionRestore();
 });
@@ -157,8 +156,8 @@ socket.on('connect_error', (err) => {
   console.warn('⚠️ Server connecting notice:', err.message);
   const pill = document.getElementById('connection-status-pill');
   if (pill) {
-    pill.textContent = '🟡 Connecting...';
-    pill.style.color = '#f59e0b';
+    pill.className = 'online-indicator-dot connecting';
+    pill.title = '🟡 Connecting to Server...';
   }
 });
 
@@ -166,8 +165,8 @@ socket.on('disconnect', (reason) => {
   console.warn('Disconnected from server:', reason);
   const pill = document.getElementById('connection-status-pill');
   if (pill) {
-    pill.textContent = '🟡 Reconnecting...';
-    pill.style.color = '#f59e0b';
+    pill.className = 'online-indicator-dot offline';
+    pill.title = '🔴 Reconnecting to Server...';
   }
 });
 
@@ -530,10 +529,10 @@ function setupEventListeners() {
     });
   });
 
-  // Audio Toggle
+  // Audio Toggle (Compact icon)
   nav.btnToggleAudio.addEventListener('click', () => {
     const isMuted = window.audioEngine.toggleMute();
-    nav.btnToggleAudio.textContent = isMuted ? '🔇 OFF' : '🔊 ON';
+    nav.btnToggleAudio.textContent = isMuted ? '🔇' : '🔊';
   });
 
   // Host Pause, Skip & End Controls
@@ -552,6 +551,24 @@ function setupEventListeners() {
       if (myRoomId) socket.emit('endAuctionNow', { roomId: myRoomId });
     }
   });
+
+  // Leave / Exit Auction Room Handlers
+  const navExitBtn = document.getElementById('btn-nav-exit-room');
+  if (navExitBtn) navExitBtn.addEventListener('click', leaveAuctionRoom);
+
+  const analyzerExitBtn = document.getElementById('btn-analyzer-exit-lobby');
+  if (analyzerExitBtn) analyzerExitBtn.addEventListener('click', leaveAuctionRoom);
+
+  const brandLogoBtn = document.getElementById('nav-brand-logo-btn');
+  if (brandLogoBtn) {
+    brandLogoBtn.addEventListener('click', () => {
+      if (myRoomId) {
+        leaveAuctionRoom();
+      } else {
+        showView('lobby');
+      }
+    });
+  }
 
   // Host & Join Team Dropdown Sync
   const hostSelect = document.getElementById('host-team-select');
@@ -808,15 +825,16 @@ function setupEventListeners() {
             quickPlayBtn.disabled = false;
             quickPlayBtn.innerHTML = '🤖 Play Solo as Royal Challengers Bengaluru vs 9 AI Bots';
             if (startRes && startRes.state) roomState = startRes.state;
-            views.waitingLobby.style.display = 'none';
-            showView('arena');
-            updateNavRoomMeta();
-            if (roomState && roomState.currentPlayer) {
-              renderPlayerSpotlight(roomState.currentPlayer);
-              renderArenaTeams();
-              updateBiddingPanel(roomState);
-            }
-            if (window.audioEngine) window.audioEngine.playGavel();
+            playDoorsOpeningTransition(() => {
+              views.waitingLobby.style.display = 'none';
+              showView('arena');
+              updateNavRoomMeta();
+              if (roomState && roomState.currentPlayer) {
+                renderPlayerSpotlight(roomState.currentPlayer);
+                renderArenaTeams();
+                updateBiddingPanel(roomState);
+              }
+            });
           });
         } else {
           quickPlayBtn.disabled = false;
@@ -867,15 +885,16 @@ function setupEventListeners() {
 
       if (res && res.success) {
         if (res.state) roomState = res.state;
-        views.waitingLobby.style.display = 'none';
-        showView('arena');
-        updateNavRoomMeta();
-        if (roomState && roomState.currentPlayer) {
-          renderPlayerSpotlight(roomState.currentPlayer);
-          renderArenaTeams();
-          updateBiddingPanel(roomState);
-        }
-        if (window.audioEngine) window.audioEngine.playGavel();
+        playDoorsOpeningTransition(() => {
+          views.waitingLobby.style.display = 'none';
+          showView('arena');
+          updateNavRoomMeta();
+          if (roomState && roomState.currentPlayer) {
+            renderPlayerSpotlight(roomState.currentPlayer);
+            renderArenaTeams();
+            updateBiddingPanel(roomState);
+          }
+        });
       } else if (res && !res.success) {
         alert(res.message || 'Could not start auction. Make sure you are in the room.');
       }
@@ -888,10 +907,7 @@ function setupEventListeners() {
   const btmStartBtn = document.getElementById('btn-start-auction-now');
   if (btmStartBtn) btmStartBtn.addEventListener('click', triggerStartAuction);
 
-  document.getElementById('btn-leave-lobby').addEventListener('click', () => {
-    clearSession();
-    window.location.reload();
-  });
+  document.getElementById('btn-leave-lobby').addEventListener('click', leaveAuctionRoom);
 
   // Desktop Paddle Button
   document.getElementById('btn-raise-bid').addEventListener('click', handleRaiseBid);
@@ -957,7 +973,75 @@ function sendChat(inputId) {
   input.value = '';
 }
 
-// Update Top App Bar
+// Leave or Exit Auction Room and Return to Main Lobby
+function leaveAuctionRoom() {
+  if (!confirm('Leave this auction room and return to the main lobby?')) return;
+  if (myRoomId) {
+    socket.emit('leaveRoom', { roomId: myRoomId, playerToken: myPlayerToken });
+  }
+  clearSession();
+  myRoomId = null;
+  myTeamId = null;
+  roomState = null;
+  isHost = false;
+
+  nav.roomMeta.style.display = 'none';
+  nav.hostControls.style.display = 'none';
+  nav.segmentedBar.style.display = 'none';
+  const exitBtn = document.getElementById('btn-nav-exit-room');
+  if (exitBtn) exitBtn.style.display = 'none';
+
+  views.waitingLobby.style.display = 'none';
+  const soldModal = document.getElementById('sold-modal');
+  if (soldModal) soldModal.classList.remove('active');
+
+  try {
+    history.pushState({}, '', window.location.pathname);
+  } catch (e) {}
+
+  showView('lobby');
+  showNotificationToast('👋 Returned to Main Lobby', '#38bdf8');
+}
+
+// 3D Stadium Doors Opening Animation
+let isDoorsTransitioning = false;
+function playDoorsOpeningTransition(onReveal) {
+  const overlay = document.getElementById('auction-doors-overlay');
+  if (!overlay || isDoorsTransitioning) {
+    if (onReveal) onReveal();
+    return;
+  }
+
+  isDoorsTransitioning = true;
+  const roomTag = document.getElementById('doors-room-code-tag');
+  if (roomTag && myRoomId) {
+    roomTag.textContent = `ROOM CODE: ${myRoomId}`;
+  }
+
+  overlay.classList.remove('opening', 'fade-out');
+  overlay.style.display = 'flex';
+  overlay.style.opacity = '1';
+
+  if (window.audioEngine) {
+    window.audioEngine.playDoorsOpen();
+  }
+
+  setTimeout(() => {
+    if (onReveal) onReveal();
+    overlay.classList.add('opening');
+
+    setTimeout(() => {
+      overlay.classList.add('fade-out');
+      setTimeout(() => {
+        overlay.style.display = 'none';
+        overlay.classList.remove('opening', 'fade-out');
+        isDoorsTransitioning = false;
+      }, 500);
+    }, 1250);
+  }, 450);
+}
+
+// Update Top App Bar (Clean, Compressed & Mobile Optimized)
 function updateNavRoomMeta() {
   nav.roomMeta.style.display = 'flex';
   nav.segmentedBar.style.display = 'flex';
@@ -966,28 +1050,22 @@ function updateNavRoomMeta() {
   const myTeam = allTeams.find(t => t.id === myTeamId);
   const pill = document.getElementById('nav-my-team-pill');
   if (myTeam) {
-    nav.myTeamName.textContent = myTeam.shortName;
-    nav.myTeamLogo.src = getProxyOrDirectImageUrl(myTeam.logo);
-    if (pill) pill.style.borderColor = myTeam.primaryColor;
-  }
-
-  const changeBadge = document.querySelector('#nav-my-team-pill span:last-child');
-  if (changeBadge) {
-    if (roomState && roomState.status !== 'LOBBY') {
-      changeBadge.textContent = 'Locked 🔒';
-      changeBadge.style.color = '#94a3b8';
-      changeBadge.style.background = 'rgba(255,255,255,0.08)';
-      if (pill) pill.title = 'Franchises locked during active auction';
-    } else {
-      changeBadge.textContent = 'Change 🔄';
-      changeBadge.style.color = '#f59e0b';
-      changeBadge.style.background = 'rgba(255,255,255,0.18)';
-      if (pill) pill.title = 'Tap to switch your franchise anytime!';
+    if (nav.myTeamName) nav.myTeamName.textContent = myTeam.shortName;
+    if (nav.myTeamLogo) nav.myTeamLogo.src = getProxyOrDirectImageUrl(myTeam.logo);
+    if (pill) {
+      pill.style.borderColor = myTeam.primaryColor;
+      pill.style.boxShadow = `0 0 10px ${myTeam.primaryColor}88`;
+      pill.title = `${myTeam.name} (Your Franchise)`;
     }
   }
 
+  const exitBtn = document.getElementById('btn-nav-exit-room');
+  if (exitBtn) exitBtn.style.display = 'inline-flex';
+
   if (isHost) {
     nav.hostControls.style.display = 'flex';
+  } else {
+    nav.hostControls.style.display = 'none';
   }
 }
 
@@ -1147,7 +1225,8 @@ socket.on('auctionPaused', () => {
   }
   const btnPause = document.getElementById('btn-host-pause');
   if (btnPause) {
-    btnPause.textContent = '▶️ Resume';
+    btnPause.textContent = '▶️';
+    btnPause.title = 'Resume Auction';
     btnPause.style.color = '#22c55e';
   }
 });
@@ -1165,25 +1244,37 @@ socket.on('playerJoinedLobby', (data) => {
 });
 
 socket.on('auctionUpdate', (state) => {
+  const wasInLobby = (roomState && roomState.status === 'LOBBY') || (views.waitingLobby && views.waitingLobby.style.display === 'flex');
   roomState = state;
-  views.waitingLobby.style.display = 'none';
-  showView('arena');
-  updateNavRoomMeta();
 
-  const btnPause = document.getElementById('btn-host-pause');
-  if (btnPause) {
-    if (state.status === 'PAUSED') {
-      btnPause.textContent = '▶️ Resume';
-      btnPause.style.color = '#22c55e';
-    } else {
-      btnPause.textContent = '⏸️ Pause';
-      btnPause.style.color = '#38bdf8';
+  const renderArena = () => {
+    views.waitingLobby.style.display = 'none';
+    showView('arena');
+    updateNavRoomMeta();
+
+    const btnPause = document.getElementById('btn-host-pause');
+    if (btnPause) {
+      if (state.status === 'PAUSED') {
+        btnPause.textContent = '▶️';
+        btnPause.title = 'Resume Auction';
+        btnPause.style.color = '#22c55e';
+      } else {
+        btnPause.textContent = '⏸️';
+        btnPause.title = 'Pause Auction';
+        btnPause.style.color = '#38bdf8';
+      }
     }
-  }
 
-  renderPlayerSpotlight(state.currentPlayer);
-  renderArenaTeams();
-  updateBiddingPanel(state);
+    renderPlayerSpotlight(state.currentPlayer);
+    renderArenaTeams();
+    updateBiddingPanel(state);
+  };
+
+  if (wasInLobby && (state.status === 'BIDDING' || state.status === 'SOLD' || state.status === 'UNSOLD')) {
+    playDoorsOpeningTransition(renderArena);
+  } else {
+    renderArena();
+  }
 });
 
 socket.on('timerTick', ({ timer, status }) => {
@@ -1192,7 +1283,8 @@ socket.on('timerTick', ({ timer, status }) => {
 
   const btnPause = document.getElementById('btn-host-pause');
   if (btnPause && roomState.status === 'BIDDING') {
-    btnPause.textContent = '⏸️ Pause';
+    btnPause.textContent = '⏸️';
+    btnPause.title = 'Pause Auction';
     btnPause.style.color = '#38bdf8';
   }
 

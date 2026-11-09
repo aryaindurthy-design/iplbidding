@@ -619,6 +619,63 @@ class AudioEngine {
     clickNoise.stop(now + 0.025);
   }
 
+  // Dramatic 3D Stadium Doors Opening / Arena Entrance SFX
+  playDoorsOpen() {
+    if (this.muted) return;
+    this.init();
+    const now = this.ctx.currentTime;
+
+    // 1. Heavy Sub-Bass Impact (Doors unlocking)
+    const subOsc = this.ctx.createOscillator();
+    const subGain = this.ctx.createGain();
+    subOsc.type = 'sine';
+    subOsc.frequency.setValueAtTime(95, now);
+    subOsc.frequency.exponentialRampToValueAtTime(32, now + 0.45);
+
+    subGain.gain.setValueAtTime(0.7, now);
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+    subOsc.connect(subGain);
+    subGain.connect(this.ctx.destination);
+    subOsc.start(now);
+    subOsc.stop(now + 0.5);
+
+    // 2. Rising Mechanical Whoosh & Stadium Echo (Doors swinging open)
+    const bufferSize = this.ctx.sampleRate * 0.9;
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      const progress = i / bufferSize;
+      data[i] = (Math.random() * 2 - 1) * Math.sin(progress * Math.PI);
+    }
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(250, now);
+    filter.frequency.exponentialRampToValueAtTime(1400, now + 0.45);
+    filter.frequency.exponentialRampToValueAtTime(400, now + 0.9);
+    filter.Q.setValueAtTime(3.0, now);
+
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.01, now);
+    noiseGain.gain.linearRampToValueAtTime(0.5, now + 0.35);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(this.ctx.destination);
+
+    noise.start(now);
+    noise.stop(now + 0.95);
+
+    // 3. Gavel Hit at the climax of door swing
+    setTimeout(() => {
+      this.playGavel();
+    }, 450);
+  }
+
   // Tension Ticking Clock
   playTick(pitch = 500) {
     if (this.muted) return;

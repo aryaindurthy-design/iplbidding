@@ -140,6 +140,32 @@ function generateRoomCode() {
   return code;
 }
 
+// Helper to get official IPL Auction Set Rank:
+// Rank 1: Marquee Set 1 (Kohli, Rohit, Bumrah, Pant, Gill, etc.)
+// Rank 2: Set 1 (BA1, AL1, WK1, FA1, SP1, etc.)
+// Rank 3: Set 2 (BA2, AL2, WK2, FA2, SP2, etc.)
+// Rank 4: Set 3
+// Rank 5: Set 4
+// Rank 6+: Remaining sets
+function getPlayerSetRank(player) {
+  const setStr = (player.set || '').trim().toLowerCase();
+  if (setStr.includes('marquee')) return 1;
+  if (setStr.includes('set 1') || setStr === 'set 1' || setStr.endsWith('1')) return 2;
+  if (setStr.includes('set 2') || setStr === 'set 2' || setStr.endsWith('2')) return 3;
+  if (setStr.includes('set 3') || setStr === 'set 3' || setStr.endsWith('3')) return 4;
+  if (setStr.includes('set 4') || setStr === 'set 4' || setStr.endsWith('4')) return 5;
+  if (setStr.includes('set 5') || setStr === 'set 5' || setStr.endsWith('5')) return 6;
+  return 7;
+}
+
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 // Create a new Room instance
 function createRoomInstance(roomId, hostSocketId, hostName, selectedTeamId, options = {}, hostToken = null) {
   const purse = options.purse || 90; // Default: 90 Cr for 11 players
@@ -165,12 +191,24 @@ function createRoomInstance(roomId, hostSocketId, hostName, selectedTeamId, opti
     };
   });
 
-  // Filter and prepare player pool
-  const playersPool = JSON.parse(JSON.stringify(allPlayersData));
-  // Fisher-Yates Shuffle so every auction has a completely fresh, exciting player order!
-  for (let i = playersPool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [playersPool[i], playersPool[j]] = [playersPool[j], playersPool[i]];
+  // Filter and prepare player pool by official IPL Mega Auction Set progression:
+  // Marquee Set 1 -> Set 1 -> Set 2 -> Set 3 -> Set 4 -> ...
+  // Inside each set group, players are shuffled randomly using Fisher-Yates!
+  const allPlayers = JSON.parse(JSON.stringify(allPlayersData));
+  const setBuckets = {};
+  for (let r = 1; r <= 7; r++) {
+    setBuckets[r] = [];
+  }
+  allPlayers.forEach(p => {
+    const rank = getPlayerSetRank(p);
+    setBuckets[rank].push(p);
+  });
+
+  const playersPool = [];
+  for (let r = 1; r <= 7; r++) {
+    if (setBuckets[r].length > 0) {
+      playersPool.push(...shuffleArray(setBuckets[r]));
+    }
   }
 
   return {

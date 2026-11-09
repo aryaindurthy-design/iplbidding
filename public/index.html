@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="referrer" content="no-referrer">
   <title>IPL Mega Auction Arena & Pro AI Squad Analyzer</title>
-  <link rel="stylesheet" href="style.css?v=2.4.0">
+  <link rel="stylesheet" href="style.css?v=2.5.0">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -15,42 +15,62 @@
       document.write('<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"><\/script>');
     }
   </script>
-  <script src="audioEngine.js?v=2.3.1"></script>
+  <script src="audioEngine.js?v=2.5.0"></script>
 </head>
 <body>
   <!-- Canvas for Confetti -->
   <canvas id="confetti-canvas"></canvas>
 
+  <!-- ================= GRAND STADIUM 3D DOORS OPENING OVERLAY ================= -->
+  <div id="auction-doors-overlay" class="doors-overlay" style="display: none;">
+    <div class="grand-door door-left">
+      <div class="door-inner-texture"></div>
+    </div>
+    <div class="grand-door door-right">
+      <div class="door-inner-texture"></div>
+    </div>
+    <div class="doors-center-stage">
+      <img src="ipl-auction-logo.png" alt="IPL Mega Auction" class="doors-hero-logo">
+      <div class="doors-stadium-banner">
+        <span>⚔️ ENTERING THE MEGA AUCTION ARENA ⚔️</span>
+      </div>
+      <div class="doors-sub-banner">
+        <span id="doors-room-code-tag">LIVE STADIUM DOORS OPENING</span>
+      </div>
+    </div>
+    <div class="doors-light-beams"></div>
+  </div>
+
   <!-- TOP APP BAR -->
   <header class="top-nav">
-    <div class="brand-badge">
-      <span class="trophy">🏆</span>
-      <div>IPL <span>AUCTION</span></div>
+    <div class="brand-badge" id="nav-brand-logo-btn" style="cursor: pointer;" title="IPL Auction Home">
+      <img src="ipl-auction-logo.png" alt="IPL AUCTION" class="brand-logo-img">
     </div>
 
     <!-- Active Room Pill (Hidden in Lobby) -->
-    <div id="nav-room-meta" style="display: none; align-items: center; gap: 8px;">
-      <div id="btn-copy-code-pill" class="glass-pill" style="padding: 5px 12px; font-weight: 800; color: #f59e0b; font-size: 0.85rem; cursor: pointer;" title="Tap to copy room code">
+    <div id="nav-room-meta" style="display: none; align-items: center; gap: 6px;">
+      <div id="btn-copy-code-pill" class="glass-pill" style="padding: 4px 8px; font-weight: 800; color: #f59e0b; font-size: 0.78rem; cursor: pointer;" title="Tap to copy room code">
         🔑 <span id="nav-room-code">------</span>
       </div>
-      <div id="nav-my-team-pill" class="glass-pill" style="padding: 4px 10px; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; cursor: pointer;" title="Tap to switch your franchise anytime!">
-        <img id="nav-my-team-logo" src="" style="width: 20px; height: 20px; object-fit: contain;">
-        <span id="nav-my-team-name">TEAM</span>
-        <span style="font-size: 0.65rem; background: rgba(255,255,255,0.18); padding: 2px 6px; border-radius: 4px; color: #f59e0b;">Change 🔄</span>
+      <div id="nav-my-team-pill" class="glass-pill" style="padding: 3px 6px; border-radius: 9999px; display: flex; align-items: center; justify-content: center; cursor: pointer;" title="Your Franchise (Tap in lobby to switch)">
+        <img id="nav-my-team-logo" src="" style="width: 24px; height: 24px; object-fit: contain;">
       </div>
     </div>
 
     <!-- Sound & Voice Controls -->
-    <div style="display: flex; align-items: center; gap: 6px;">
-      <div id="connection-status-pill" class="glass-pill" style="padding: 4px 8px; font-size: 0.72rem; color: #22c55e; font-weight: 800;">🟢 Online 24/7</div>
-      <button id="btn-toggle-audio" class="glass-pill" style="padding: 6px 10px; color: #fff; font-size: 0.8rem; border: none; cursor: pointer;">🔊 ON</button>
+    <div style="display: flex; align-items: center; gap: 5px;">
+      <div id="connection-status-pill" class="online-indicator-dot online" title="Real-time Server Online"></div>
+      <button id="btn-toggle-audio" class="glass-pill icon-btn" style="padding: 4px 8px; font-size: 0.85rem; border: none; cursor: pointer;" title="Toggle Sound">🔊</button>
       
       <!-- Host Quick Actions Menu -->
-      <div id="host-controls" style="display: none; align-items: center; gap: 6px;">
-        <button id="btn-host-pause" class="glass-pill" style="padding: 6px 10px; color: #38bdf8; font-size: 0.75rem; border: none; cursor: pointer;">⏸️ Pause</button>
-        <button id="btn-host-skip" class="glass-pill" style="padding: 6px 10px; color: #f59e0b; font-size: 0.75rem; border: none; cursor: pointer;">⏭️ Skip</button>
-        <button id="btn-host-end" class="glass-pill" style="padding: 6px 10px; color: #ef4444; font-size: 0.75rem; border: none; cursor: pointer;">🛑 Judge</button>
+      <div id="host-controls" style="display: none; align-items: center; gap: 4px;">
+        <button id="btn-host-pause" class="glass-pill icon-btn" style="padding: 4px 7px; color: #38bdf8; font-size: 0.8rem; border: none; cursor: pointer;" title="Pause Auction">⏸️</button>
+        <button id="btn-host-skip" class="glass-pill icon-btn" style="padding: 4px 7px; color: #f59e0b; font-size: 0.8rem; border: none; cursor: pointer;" title="Skip Player">⏭️</button>
+        <button id="btn-host-end" class="glass-pill icon-btn" style="padding: 4px 7px; color: #ef4444; font-size: 0.8rem; border: none; cursor: pointer;" title="End & Pro AI Judge">🛑</button>
       </div>
+
+      <!-- Leave / Exit Room Button -->
+      <button id="btn-nav-exit-room" class="glass-pill exit-pill-btn" style="display: none; padding: 4px 8px; font-size: 0.75rem; font-weight: 800; color: #f87171; border: 1px solid rgba(239,68,68,0.4); cursor: pointer;" title="Exit Room to Home">🚪 Exit</button>
     </div>
   </header>
 
@@ -66,6 +86,7 @@
   <main id="view-lobby" class="view-screen active">
     <div class="lobby-container">
       <div class="lobby-hero">
+        <img src="ipl-auction-logo.png" alt="IPL Mega Auction Logo" class="lobby-hero-logo" style="width: 140px; height: auto; margin-bottom: 12px; filter: drop-shadow(0 0 25px rgba(245,158,11,0.6));">
         <h1>IPL MEGA AUCTION ARENA</h1>
         <p>Real-time live bidding with your friends, official team logos, viral Instagram reel anthems on every hammer drop, and the Pro AI Squad Judge!</p>
       </div>
@@ -542,6 +563,9 @@
         <button id="btn-copy-squad-card" class="btn btn-primary" style="font-size: 0.95rem; font-weight: 800; padding: 10px 22px;">
           📸 Share Squad Card on WhatsApp
         </button>
+        <button id="btn-analyzer-exit-lobby" class="btn btn-secondary" style="font-size: 0.95rem; font-weight: 800; padding: 10px 20px;">
+          🏠 Leave Room & Return to Lobby
+        </button>
       </div>
 
       <!-- 🏆 1ST PLACE CHAMPION & OFFICIAL VERDICT -->
@@ -656,6 +680,6 @@
     </div>
   </main>
 
-  <script src="app.js?v=2.4.0"></script>
+  <script src="app.js?v=2.5.0"></script>
 </body>
 </html>
